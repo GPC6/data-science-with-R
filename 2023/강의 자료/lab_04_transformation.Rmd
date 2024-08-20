@@ -1,0 +1,566 @@
+---
+title: "Session 04: Transformation"
+author: "326.212 전산통계 및 실습"
+institute: "서울대학교 통계학과"
+output: 
+  html_document:
+    keep_md: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, error=TRUE)
+```
+
+# Recap : `dplyr` package for data transformation
+
+Before we move on, don’t forget to load `tidverse`:
+
+```{r}
+library(tidyverse)
+```
+
+## Example : `nycflights3`
+
+```{r}
+library(nycflights13)
+```
+
+336,776 flights that departed from New York City in 2013:
+
+```{r}
+head(flights)
+```
+
+```{r}
+dim(flights)
+```
+
+# Key Idea of Data Transformation
+
+It is rare that you get the data in exactly the right form you need.
+
+`dplyr` package provides you with some key functions that allow you to solve the vast majority of your data manipulation challenges.
+
+All verbs of `dplyr` work similarly:
+    1. The first argument is a data frame.
+    1. The subsequent arguments describe what to do with the data frame, using the variable names (without quotes).
+    1. The result is a new data frame.
+
+## Pipe operator: `%>%`
+
+* [Book](http://r4ds.had.co.nz/transform.html#grouped-summaries-with-summarise)
+
+Pipe operator `%>%` passes the result of the previous function to the next function where `.` is. If `.` does not exist, the result will be passed to the first argument of the next function. Hence, following 3 lines of codes are all equivalent.
+
+```{r}
+select(flights, year, month, day)
+```
+
+```{r}
+flights %>% select(., year, month, day)
+```
+
+```{r}
+flights %>% select(year, month, day)
+```
+
+Using pipeline operator may make codes cleaner. Consider the difference between following 3 different styles of codes, which all prints out the same result.
+
+```{r}
+summarise(arrange(filter(group_by(mutate(filter(flights, !is.na(dep_delay), !is.na(arr_delay)), sched_dep_hour = sched_dep_time %/% 100), dest), n() > 10000), dep_delay), recommend_time=first(sched_dep_hour), delay=first(dep_delay))
+```
+
+```{r}
+flights_notNA <- filter(flights, !is.na(dep_delay), !is.na(arr_delay))
+flights_mutate <- mutate(flights_notNA, sched_dep_hour = sched_dep_time %/% 100)
+flights_dest_filter <- filter(group_by(flights_mutate, dest), n() > 10000)
+flights_summarise <- summarise(arrange(flights_dest_filter, dep_delay), recommend_time=first(sched_dep_hour), delay=first(dep_delay))
+flights_summarise
+```
+
+```{r}
+flights %>% 
+  filter(!is.na(dep_delay), !is.na(arr_delay)) %>% 
+  mutate(sched_dep_hour = sched_dep_time %/% 100) %>%
+  group_by(dest) %>% filter(n() > 10000) %>%
+  arrange(dep_delay) %>%
+  summarise(recommend_time=first(sched_dep_hour), delay=first(dep_delay))
+```
+
+## Summary
+
+* Select observations by their values: `filter()`
+* Select variables by their name: `selection()`
+* Grouping : `group_by()`
+    * Grouping by multiple variables
+    * Ungrouping : `ungroup()`
+* Reordering : `arrange()`, `desc()`
+* Create variables or summaries : `mutate()`, `transmute()`, `summarise()`
+    * Counts : `n()`
+* ETC
+    * Rename a variable: `rename()`
+    * Missing values: `NA`
+
+---
+### Selection
+
+#### Pick observations by their values: `filter()`
+
+* [Book](http://r4ds.had.co.nz/transform.html#filter-rows-with-filter)
+* Filter __rows__ with `filter()`.
+
+```{r}
+filter(flights, month == 1, day == 1)
+```
+
+* How to select the observations
+* Comparison operators: `>`, `>=`, `<`, `<=`, `!=`, `==`, `near()`
+* Logical (boolean) operators : `&`, `|`, `!`, `xor()`
+
+```{r}
+flightsNovDec <- filter(flights, month == 11 | month == 12)
+head(flightsNovDec)
+```
+
+```{r}
+filter(flights, arr_delay <= 120, dep_delay <= 120)
+```
+
+#### Pick variables by their names: `select()`.
+* [Book](https://r4ds.had.co.nz/transform.html#select)
+* Select __columns__ by variable name
+
+```{r}
+tmp <- select(flights, year, month, day)
+head(tmp)
+```
+
+* Helper functions
+    * `everything()`
+    * `starts_with("abc")`
+    * `ends_with("xyz")`
+    * `contains("ijk")`
+    * `matches("(.)\\1")`
+    * `num_range("x", 1:3)`
+
+```{r}
+colnames(flights)
+```
+
+```{r}
+tmp <- select(flights, year:day, ends_with("time"), -starts_with("sched"), dim(flights)[2])
+head(tmp)
+```
+
+---
+### Grouping
+#### Grouping by values
+* [Book](http://r4ds.had.co.nz/transform.html#grouped-summaries-with-summarise)
+* `group_by()` changes the unit of analysis from the complete dataset to individual groups.
+* When you use the dplyr verbs on a grouped data frame they’ll be automatically applied “by group”.
+
+```{r}
+by_day <- group_by(flights, year, month, day)
+head(by_day)
+```
+
+#### Grouping by multiple values (Ch 5.6.5)
+
+* [Book](http://r4ds.had.co.nz/transform.html#grouping-by-multiple-variables)
+
+```{r}
+daily <- group_by(flights, year, month, day)
+(per_day   <- summarise(daily, flights = n()))
+```
+
+```{r}
+(per_month <- summarise(per_day, flights = sum(flights)))
+```
+
+```{r}
+(per_year  <- summarise(per_month, flights = sum(flights)))
+```
+
+* Be careful when progressively rolling up summaries:
+    * we need to think about weighting means and variances
+    * it’s not possible to do it exactly for rank-based statistics like the median.
+    * the sum of groupwise sums is the overall sum, but the median of groupwise medians is not the overall median.
+
+#### Ungrouping (Ch 5.6.6) : `ungroup()`
+* [Book](http://r4ds.had.co.nz/transform.html#ungrouping)
+* If you need to remove grouping, and return to operations on ungrouped data, use `ungroup()`
+
+```{r}
+daily <- group_by(flights, year, month, day)
+head(daily)
+```
+
+```{r}
+head(daily %>% summarise(flights = n()))
+```
+
+```{r}
+tmp<- daily %>% ungroup() 
+head(tmp)
+```
+
+```{r}
+tmp %>% summarise(flights = n())
+```
+
+
+---
+### Reordering
+#### Reorder the observations : `arrange()`
+* [Book](http://r4ds.had.co.nz/transform.html#arrange-rows-with-arrange)
+* `arrange()` changes the order of __rows__.
+* It takes a data frame and a set of column names (or more complicated expressions) to order by.
+
+```{r}
+arrange(flights, year, month, day)
+```
+
+```{r}
+arrange(flights, desc(arr_delay))
+```
+
+```{r}
+x <- factor(letters)
+arrange(tibble(x), desc(x))
+```
+
+* Missing values are always sorted at the end:
+
+```{r}
+df <- tibble(x = c(5, 2, NA))
+arrange(df, x)
+```
+
+```{r}
+arrange(df, desc(x))
+```
+
+---
+### Change or Create variables
+
+#### Create new variables with functions of existing variables: `mutate()`.
+
+* [Book](http://r4ds.had.co.nz/transform.html#add-new-variables-with-mutate)
+
+```{r}
+flights_sml <- 
+  select(flights, year:day, ends_with("delay"), distance, air_time) %>% 
+  mutate(gain = arr_delay - dep_delay,
+         hours = air_time / 60, gain_per_hour = gain / hours )
+head(flights_sml)
+```
+
+#### Only keep the new variables: `transmute()`
+
+```{r}
+tmp <- select(flights, year:day, ends_with("delay"), distance, air_time) %>% 
+  transmute(gain = arr_delay - dep_delay,
+            hours = air_time / 60, gain_per_hour = gain / hours )
+head(tmp)
+```
+
+#### Useful creation functions
+* The function must be vectorised: it must take a vector of values as input, return a vector with the same number of values as output.
+* Arithmetic operators: `+`, `-`, `*`, `/`, `^`.
+* Modular arithmetic: `%/%` (integer division) and `%%` (remainder).
+* Logs: `log()`, `log2()`, `log10()`.
+* Offsets: `lead()`, `lag()`.
+* Cumulative and rolling aggregates: `cumsum()`, `cumprod()`, `cummin()`, `cummax()`, and `dplyr::cummean()`.
+* Logical comparisons: `<`, `<=`, `>`, `>=`, `!=`.
+* Ranking: `min_rank()`
+
+#### Collapse many values down to a single summary: `summarise()`
+* [Book](http://r4ds.had.co.nz/transform.html#grouped-summaries-with-summarise)
+* Grouped summaries with `summarise()`
+* It collapses a data frame to a single row:
+
+```{r}
+summarise(flights, delay = mean(dep_delay, na.rm = TRUE))
+```
+
+* Useful if paired with `group_by()`:
+
+```{r}
+by_day <- group_by(flights, year, month, day) %>% 
+  summarise(delay = mean(dep_delay, na.rm = TRUE)) 
+head(by_day)
+```
+
+```{r}
+delays <- flights %>% 
+  group_by(dest) %>% 
+  summarise(
+    count = n(), dist = mean(distance, na.rm = TRUE), delay = mean(arr_delay, na.rm = TRUE) ) %>% 
+  filter(count > 20, dest != "HNL")
+head(delays)
+```
+
+```{r}
+ggplot(data = delays, mapping = aes(x = dist, y = delay)) +
+  geom_point(aes(size = count), alpha = 1/3) + geom_smooth(se = FALSE)
+```
+
+```{r}
+not_cancelled <- flights %>% 
+  filter(!is.na(dep_delay), !is.na(arr_delay))
+
+not_cancelled %>% 
+  group_by(year, month, day) %>% 
+  summarise(mean = mean(dep_delay))
+```
+
+#### Count: `n()` (Ch 5.6.3)
+
+* [Book](http://r4ds.had.co.nz/transform.html#counts)
+* Count: `n()`
+* Count of non-missing values: `sum(!is.na(x))`
+* Whenever you do any aggregation, you can check that you’re not drawing conclusions based on very small amounts of data by including __count__.
+* The planes that have the highest average delays:
+```{r}
+not_cancelled <- flights %>% 
+  filter(!is.na(dep_delay), !is.na(arr_delay))
+
+delays <- not_cancelled %>% 
+  group_by(tailnum) %>% 
+  summarise(
+    delay = mean(arr_delay)
+  )
+
+ggplot(data = delays, mapping = aes(x = delay)) + 
+  geom_freqpoly(binwidth = 10)
+```
+
+* A scatterplot of number of flights vs. average delay:
+```{r}
+delays <- not_cancelled %>% 
+  group_by(tailnum) %>% 
+  summarise(
+    delay = mean(arr_delay, na.rm = TRUE),
+    n = n()
+  )
+
+ggplot(data = delays, mapping = aes(x = n, y = delay)) + 
+  geom_point(alpha = 1/10)
+```
+
+* There is much greater variation in the average delay when there are few flights.
+* The variation decreases as the sample size increases.
+* It’s often useful to filter out the groups with the smallest numbers of observations, so you can see more of the pattern and less of the extreme variation in the smallest groups.
+
+```{r}
+delays %>% 
+  filter(n > 25) %>% 
+  ggplot(mapping = aes(x = n, y = delay)) + 
+    geom_point(alpha = 1/10)
+```
+
+* Example : `Lahman`
+
+```{r}
+batting <- as_tibble(Lahman::Batting)
+head(batting)
+```
+
+* `ba`: the skill of the batter (measured by the batting average)
+* `ab`: the number of opportunities to hit the ball (measured by at bat)
+
+```{r}
+batters <- batting %>% 
+  group_by(playerID) %>% 
+  summarise(
+    ba = sum(H, na.rm = TRUE) / sum(AB, na.rm = TRUE),
+    ab = sum(AB, na.rm = TRUE)
+  )
+head(batters)
+```
+
+```{r}
+batters %>% 
+  filter(ab > 100) %>% 
+  ggplot(mapping = aes(x = ab, y = ba)) +
+    geom_point() + 
+    geom_smooth(se = FALSE)
+```
+
+* There’s a positive correlation between skill (`ba`) and opportunities to hit the ball (`ab`).
+* If you naively sort on `desc(ba)`, the people with the best batting averages are clearly lucky, not skilled:
+```{r}
+batters %>% 
+  arrange(desc(ba))
+```
+
+
+#### Other summary functions
+* [Book](http://r4ds.had.co.nz/transform.html#summarise-funs)
+* Location: `mean(x)`, `median(x)`.
+* Spread: `sd(x)`, `IQR(x)`, `mad(x)`.
+* Rank: `min(x)`, `quantile(x, 0.25)`, `max(x)`.
+* Position: `first(x)`, `nth(x, 2)`, `last(x)`.
+* Count: `n(x)`, `sum(!is.na(x))`, `n_distinct(x)`, `count(x)`.
+* Counts and proportions of logical values: `sum(x > 10)`, `mean(y == 0)`.
+
+#### Grouped filters
+* [Book](http://r4ds.had.co.nz/transform.html#grouped-mutates-and-filters)
+* Combination of `group_by()` with `filter()` or `mutate()`.
+
+```{r}
+flights_sml <- 
+  select(flights, year:day, ends_with("delay"), distance, air_time)
+flights_sml %>% 
+  group_by(year, month, day) %>%
+  filter(rank(desc(arr_delay)) < 10)
+```
+
+```{r}
+popular_dests <- flights %>% 
+  group_by(dest) %>% 
+  filter(n() > 10000 )
+dim(popular_dests)
+```
+
+```{r}
+head(popular_dests)
+```
+
+---
+
+### ETC
+
+#### Missing values: `NA`
+* [Book](http://r4ds.had.co.nz/transform.html#missing-values)
+* `NA` (not available) represents an unknown value so missing values are “contagious”: almost any operation involving an unknown value will also be unknowns:
+
+```{r}
+x <- c(1,3,5,NA)
+mean(x)
+```
+
+```{r}
+mean(x, na.rm=TRUE)
+```
+
+```{r}
+NA == NA
+```
+
+```{r}
+is.na(x)
+```
+
+```{r}
+df <- tibble(x = c(1, NA, 3))  # tibble is a data frame
+filter(df, x > 1)
+```
+
+```{r}
+filter(df, is.na(x) | x > 1)
+```
+
+#### Rename a variable: `rename()`
+* [Book](https://won-j.github.io/326_212-2018fall/lectures/03-transformation.html#select-columns-with-select)
+* Rename a variable:
+
+```{r}
+tmp <- rename(flights, tail_num = tailnum)
+head(tmp)
+```
+
+---
+
+### Example
+* For each popular destination (flight bigger than 10000), please show the best time of day to avoid (dep) delays as much as possible, when you consider departing between 9 am and 3 pm in the summer (July, August, and September).
+* Consider only not cancelled flight.
+
+```{r}
+not_cancelled <- flights %>% 
+  filter(!is.na(dep_delay), !is.na(arr_delay)) %>% 
+  select(year:day, ends_with("dep_time"), ends_with("dep_delay"), dest) %>%
+  mutate(sched_dep_hour = sched_dep_time %/% 100)
+head(not_cancelled)
+```
+
+```{r}
+popular_flight <- not_cancelled %>% group_by(dest) %>% 
+  filter(n() > 10000 )
+```
+
+```{r}
+n_distinct(popular_flight$dest)
+```
+
+```{r}
+unique(popular_flight$dest)
+```
+
+```{r}
+range(not_cancelled$sched_dep_hour)
+```
+
+```{r}
+recommend_times <- popular_flight %>%
+  filter(month %in% c(6, 7, 8)) %>%
+  filter(sched_dep_hour >= 9 & sched_dep_hour <= 15) %>%
+  ungroup() %>%
+  group_by(dest, year, month, day) %>% 
+  arrange(dep_delay) %>%
+  summarise(recommend_time=first(sched_dep_hour), delay=first(dep_delay))
+```
+
+```{r}
+recommend_times
+```
+
+```{r}
+recommend_times %>% group_by(recommend_time, dest) %>%
+  summarize(m = mean(delay), sd = sd(delay),
+            low_ci = m - 2*sd,
+            high_ci = m + 2*sd,
+            n = n()) %>%
+  ggplot(aes(recommend_time, m, ymin = low_ci, ymax = high_ci)) +
+  geom_pointrange() +
+  facet_wrap(~ dest, nrow = 2)
+```
+
+```{r}
+recommend_times %>% group_by(dest, recommend_time) %>%
+  summarise(mean_delay=mean(delay), count=n()) %>% 
+  arrange(mean_delay) %>% 
+  summarise(recommend_time=first(recommend_time), mean_delay=first(mean_delay))
+```
+### Exercise
+We give you the following `lam_wf` data; This data set is the simplified version of the datasets that consists of the engineering variables from a LAM 9600 Metal Etcher over the course of etching 129 wafers. For more information about the original data set, please see: 
+
+```
+B.M. Wise, N.B. Gallagher, S.W. Butler, D.D. White, Jr. and G.G. Barna, \"A Comparison of Principal Components Analysis, Multi-way Principal Components Analysis, Tri-linear Decomposition and Parallel Factor Analysis for Fault Detection in a Semiconductor Etch Process\", J. Chemometrics, in press, 1999
+```
+
+```{r preprocess, echo = TRUE, message= FALSE}
+library(tidyverse)
+lam_wf <- read.csv('lam_data.csv')
+lam_wf %>% head
+```
+
+
+# Mean of pressure per each batch, each step -> step number that for maximum of the mean of the presure per each batch_id 
+1. For each 'batch_id' we can calculate the list of the time differences from the nearest two measurement points using `Time` variables. Using the learned data transformation, calculate the mean of the time differences per each `batch_id`. What is the the maximum value from the list of the mean. Show the answer as in the table below.  (Hint: You have to remove `NA` for calculating the mean of the time differences.)
+
+```{r, echo = FALSE}
+maximum_of_mean_time_difference <- lam_wf %>% select(Time, batch_id) %>% arrange(Time) %>% group_by(batch_id) %>% mutate(Time_diff = Time-lag(Time)) %>% summarise(mean_time_diff = mean(Time_diff, na.rm = TRUE)) %>% summarise(maximum_of_mean_time_difference = max(mean_time_diff)) %>% .$maximum_of_mean_time_difference
+maximum_of_mean_time_difference
+```
+
+2. Using the learned data transformation, calculate the mean of the `Pressure` per each `Step_Number` of each `batch_id`. Find the `Step_Number` that showed maximum mean pressure per each `batch_id`. What is the most common step number that showed maximum mean pressure? Show the answer as `most_important_step` in the table below.
+
+```{r, echo = FALSE}
+most_important_step <- lam_wf %>% select(Pressure, batch_id, Step_Number) %>% group_by(batch_id, Step_Number) %>% summarise(mean_pressure=mean(Pressure, na.rm = TRUE)) %>% mutate(rank = min_rank(desc(mean_pressure))) %>% filter(rank == 1) %>% ungroup %>% count(Step_Number) %>% arrange(n) %>% first
+most_important_step
+```
+
+-----
+
+**Acknowledgment** All contents in this note is based on the book “R for Data Science”, written by Grolemund & Wickham.

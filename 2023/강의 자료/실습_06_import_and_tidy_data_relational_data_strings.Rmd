@@ -1,0 +1,359 @@
+---
+title: "Session 06: Import and Tidy Data / Relational Data / Strings"
+author: "326.212 전산통계 및 실습"
+institute: "서울대학교 통계학과"
+output: 
+  html_document:
+    keep_md: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, error=TRUE)
+```
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+rm(list = ls())
+options(repos = c(CRAN = "http://cran.rstudio.com"))
+
+library("ggplot2")
+library("dplyr")
+library("tidyr")
+library("readr")
+library("stringr")
+```
+
+
+# Import and Tidy Data
+
+## Tibbles
+
+```{r}
+df_tibble <- tibble(
+  x = runif(5),
+  y = rnorm(5)
+)
+df_tibble
+```
+
+```{r}
+df_tibble$x; df_tibble[["x"]]; df_tibble[[1]]; df_tibble %>% .$x
+```
+
+```{r}
+df_dataframe <- as.data.frame(df_tibble)
+
+df_dataframe[,2] # == df_tibble[[2]]
+df_dataframe[,"y"] # == df_tibble[["x"]]
+```
+
+- You need to get used to both `data.frame` and `tibbles`
+
+## `readr` package
+
+- Load data
+
+```{r}
+money <- read_csv("lab_06_data_money.csv") # do not change this line
+str(money)
+```
+
+```{r}
+money
+```
+
+
+```{r}
+money.without.parser <- read.csv("lab_06_data_money.csv")
+str(money.without.parser)
+```
+
+```{r}
+money.without.parser
+```
+
+
+- How to change each column as we expect? For example, try to make the following data frame;
+
+```{r, echo = FALSE}
+apply(money.without.parser, 2, parse_number)
+```
+
+## factor vs character
+
+```{r}
+fruit_ch <- fruit[1:5]
+fruit_ch
+class(fruit_ch)
+```
+
+```{r}
+fruit_fa <- factor(fruit[1:5])
+fruit_fa
+class(fruit_fa)
+```
+
+```{r}
+fc<-c("Kang", "Doo", "Young")
+fc_f=as.factor(fc)
+fc_f
+```
+
+```{r}
+as.numeric(fruit_fa)
+c(fruit_fa, "dragonfruit")
+fruit_fa[1] <- "dragonfruit"
+fruit_fa
+```
+
+```{r}
+as.numeric(fruit_ch)
+c(fruit_ch, "dragonfruit")
+fruit_ch[1] <- "dragonfruit"
+fruit_ch
+```
+
+
+### Suppress `factor` when reading data
+
+- If you don't like `factor`, how to suppress it?
+
+```{r, eval = FALSE}
+money <- read.csv("lab_06_data_money.csv") # I don't like factor!!
+```
+
+```{r}
+str(money) 
+```
+
+- Find an option in `read.csv` that suppresses the conversion into `factor`, and get the result like this;
+
+```{r, echo = FALSE}
+money <- read.csv("lab_06_data_money.csv", stringsAsFactors = F) # do not change this line
+```
+
+```{r}
+str(money)
+
+```
+
+
+## Gathering
+
+```{r}
+table4a
+```
+
+```{r}
+table4a %>%
+  gather(`1999`, `2000`, key = "year", value = "cases")
+```
+
+
+## wide format vs long format
+```{r}
+table2 # long
+```
+
+```{r}
+table2 %>% spread(key = year, value = count) # wide
+```
+
+
+## long format is preferred in ggplot
+```{r}
+ggplot(table2, aes(x = country, y = count, color = factor(year))) + geom_bar(stat = "identity") + facet_wrap(~ type, scales = "free")
+
+```
+
+## 12.6 Case study
+```{r}
+data(who)
+head(who)
+who %>%
+  gather(key = "key", value = "value", new_sp_m014:newrel_f65, na.rm = TRUE) %>% 
+  mutate(key = stringr::str_replace(string = key, pattern = "newrel", replacement = "new_rel")) %>%
+  separate(col = key, into = c("new", "var", "sexage"), sep = "_") %>% 
+  select(-new, -iso2, -iso3) %>% 
+  separate(col = sexage, into = c("sex", "age"), sep = 1)
+```
+
+
+
+# Relational Data
+
+```{r}
+library(nycflights13)
+```
+
+```{r}
+flights2 <- flights %>% 
+  select(year:day, hour, origin, dest, tailnum, carrier)
+flights2
+```
+
+
+```{r}
+flights2 %>% left_join(weather)
+```
+
+```{r}
+planes
+```
+
+
+```{r}
+flights2 %>%  left_join(planes, by = "tailnum")
+```
+
+
+```{r}
+flights2 %>%  left_join(airports, c("dest" = "faa"))
+```
+
+```{r}
+top_dest <- flights %>%
+  count(dest, sort = TRUE) %>%
+  head(10)
+top_dest
+```
+
+```{r}
+top_flights <- flights %>% semi_join(top_dest) 
+top_flights %>% .$dest %>% unique
+```
+
+```{r}
+flights %>% 
+  anti_join(planes, by = "tailnum") %>%
+  count(tailnum, sort = TRUE)
+```
+
+```{r}
+flights %>% 
+  anti_join(planes, by = "tailnum") %>% .$tailnum %>% unique
+```
+
+```{r}
+setdiff(flights$tailnum, planes$tailnum)
+```
+
+
+# Strings
+
+
+## Print something in loop
+```{r, eval = FALSE}
+for(i in 1:10){
+  obj_print <- i
+  cat(obj_print)
+}
+```
+
+
+```{r, eval = FALSE}
+for(i in 1:10){
+  obj_print <- i
+  obj_print
+}
+```
+
+- Nothing happens... What should we do?
+
+```{r, eval = FALSE}
+for(i in 1:10){
+  obj_print <- i
+  print(obj_print)
+}
+```
+
+## `sprintf`
+
+- Do identically what C function `sprintf` does
+
+- See an example below;
+
+```{r, eval = FALSE}
+gender <- "M" # or "F"
+your_name <- "Seongoh Park"
+
+sprintf("Current time is %s, %s. %s", 
+        Sys.time(),
+        if(gender=="M") "Mr" else "Ms",
+        your_name)
+
+# %03d
+# %3.2f
+
+# apply this to multiple cases
+info <- data.frame(your_name = c("A", "B", "C"),
+           gender = c("M", "M", "F"))
+info
+sprintf("Current time is %s, %s. %s", 
+        Sys.time(),
+        ifelse(info$gender =="M", "Mr", "Ms"),
+        info$your_name)
+```
+
+- Other types are also available
+
+```{r, eval = FALSE}
+for(i in 1:5){
+  cat(sprintf("integer i= %d\n", i))
+  cat(sprintf("double i= %f\n", i))
+  cat(sprintf("double i= %.3f\n\n", i))
+}
+```
+
+
+
+
+## Combining strings
+
+```{r}
+str_c("x", "y", sep = ", ")
+```
+
+```{r}
+str_c("prefix-", c("a", "b", "c"), "-suffix")
+```
+
+```{r}
+str_c(c("x", "y", "z"), collapse = ", ")
+```
+
+## Matching patterns with regular expressions
+
+```{r}
+x <- c("abc", "a.c", "bef")
+x
+str_view(x, "a.")
+```
+
+```{r}
+str_view(x, "a\\.c")  
+```
+
+- why "\\."?
+
+```{r}
+writeLines("a\\.c")
+```
+
+```{r}
+bananas.is.good <- c("banana", "Banana", "BANANA")
+str_view(bananas.is.good, "banana")
+str_view(bananas.is.good, regex("banana",))
+```
+
+```{r}
+str_view(bananas.is.good, regex("banana", ignore_case = TRUE))
+```
+
+```{r}
+x <- "Line 1\nLine 2\nLine 3"
+str_extract_all(x, "^Line")[[1]]
+```
+
+```{r}
+str_extract_all(x, regex("^Line", multiline = TRUE))[[1]]
+```

@@ -1,0 +1,303 @@
+---
+title: "Session 03: Visualization"
+author: "326.212 전산통계 및 실습"
+institute: "서울대학교 통계학과"
+output: 
+  html_document:
+    keep_md: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, error=TRUE)
+```
+
+# Recap: layered grammar of graphics
+
+Before we move on, don’t forget to load `tidyverse`:
+
+```{r, warning = FALSE}
+library("tidyverse")
+```
+
+__Key Idea__ You can build _every_ graph from the same few components:
+
+```{r, eval=FALSE, echo=TRUE}
+ggplot(data = <DATA>) + 
+  <GEOM_FUNCTION>(
+     mapping = aes(<MAPPINGS>),
+     stat = <STAT>, 
+     position = <POSITION>
+  ) +
+  <COORDINATE_FUNCTION>(...) +
+  <FACET_FUNCTION>(...)
+```
+
+* A data set (`ggplot(data = <DATA>)`)
+( A set of geoms (`<GEOM_FUNCTION>(...)`); visual marks that represent data points.
+    * Aesthetics (`mapping = aes(<MAPPINGS>)`)
+    * Statistical transformations (`stat = <STAT>`)
+    * Position adjustments (`position = <POSITION>`)
+* A coordinate system (`<COORDINATE_FUNCTION>(...)`).
+( Facets (`<FACET_FUNCTION>(...)`)
+
+![](ext/ggplot.png)
+
+
+# Geoms
+
+You’ve learned various geom functions in class, such as
+
+* `geom_point`
+* `geom_smooth`
+* `geom_bar`
+* `geom_boxplot`
+* `Aesthetic mappings`
+
+## Aesthetic mappings
+
+```{r}
+ggplot(data = mpg) +
+  geom_point(mapping = aes(x = displ, y = hwy, color = class))
+```
+
+### Manual setting of an aesthetic 
+
+```{r}
+ggplot(data = mpg) + 
+  geom_point(mapping = aes(x = displ, y = hwy), color = "blue")
+```
+
+## Statistical transformations
+
+Some plots visualize a transformation of the original data set. Use a `stat` to choose a common transformation to visualize.
+
+```{r}
+ggplot(data = diamonds) +
+  stat_count(mapping = aes(x = cut))  # every stat has a default geom
+```
+
+`stat` functions and `geom` functions both combine a stat with a geom to make a layer, i.e. `stat_bin(geom="bar")` does the same as `geom_bar(stat="bin")`.
+
+```{r}
+ggplot(data = diamonds) + 
+  geom_bar(mapping = aes(x = cut))  # and every geom has a default stat
+```
+
+Each stat creates additional variables to map aesthetics to. These variables use a common `..name..` syntax.
+
+```{r}
+ggplot(data = diamonds) +
+  geom_bar(mapping = aes(x = cut, y = ..prop.., group = 1))
+```
+
+## Position adjustments
+You’ve learned various position adjustments in class, such as
+
+* `"identity"`
+* `"dodge"`
+* `"stack"`
+* `"fill"`
+* `"jitter"`
+
+## Multiple geoms in a graph
+
+```{r}
+ggplot(data = mpg) + 
+  geom_point(mapping = aes(x = displ, y = hwy)) +
+  geom_smooth(mapping = aes(x = displ, y = hwy))
+```
+
+Note that following code will give exactly same graph:
+
+```{r, echo=TRUE, eval=FALSE}
+ggplot(data = mpg, mapping = aes(x = displ, y = hwy)) +  # set global mappings
+  geom_point() + geom_smooth()
+
+```
+
+## Overriding
+
+```{r}
+ggplot(data = mpg, mapping = aes(x = displ, y = hwy)) + 
+  geom_point(mapping = aes(color = class)) +  # override default aesthetics
+  geom_smooth()
+```
+
+
+```{r}
+ggplot(data = mpg, mapping = aes(x = displ, y = hwy)) + 
+  geom_point(mapping = aes(color = class)) + 
+  geom_smooth(data = filter(mpg, class == "subcompact"), se = FALSE)  # you can also override data
+```
+
+# Coordinate
+
+You’ve learned various coordinate functions in class, such as
+
+* `coordinate_cartesian`: Cartesian coordinate system (default).
+* `coordinate_fixed`: Cartesian coordinate with fixed aspect ratio.
+* `coordinate_flip`: Flipped cartesian coordinate system.
+* `coordinate_quickmap`: Maps in scale.
+* `coordinate_polar`: Polar coordinate system.
+
+# Facet
+
+Facets divide a plot into subplots based on the values of one or more discrete variables. You’ve learned various facet functions in class, such as
+
+* `facet_wrap`
+* `facet_grid`
+
+# Graphics for communications
+
+## Labels
+
+You can add labels via `labs()` function.
+
+```{r}
+ggplot(mpg, aes(displ, hwy)) +
+  geom_point(aes(color = class)) +
+  geom_smooth(se = FALSE) + 
+  labs(
+    title = "Fuel efficiency generally decreases with engine size",
+    subtitle = "Two seaters (sports cars) are an exception because of their light weight",
+    caption = "Data from fueleconomy.gov",
+    x = "Engine displacement (L)",
+    y = "Highway fuel economy (mpg)",
+    colour = "Car type"
+  )
+```
+
+You can put math equations. See `?plotmath` for more infos.
+
+```{r}
+df <- tibble(x = runif(10), y = runif(10))
+ggplot(df, aes(x, y)) + geom_point() +
+  labs(
+    x = quote(sum(x[i] ^ 2, i == 1, n)),
+    y = quote(alpha + beta + frac(delta, theta))
+  )
+```
+
+## Annotations
+
+```{r}
+best_in_class <- mpg %>%
+  group_by(class) %>%
+  filter(row_number(desc(hwy)) == 1)
+best_in_class
+```
+
+```{r}
+ggplot(mpg, aes(x = displ, y = hwy)) +
+  geom_point(aes(colour = class)) +
+  geom_text(aes(label = model), data = best_in_class)
+```
+
+Using `ggrepel` package automatically adjust labels so that they don’t overlap.
+
+## Scales
+
+`scale` functions control how a plot maps data values to the visual values of an aesthetic.
+
+```{r}
+ggplot(mpg, aes(displ, hwy)) +
+  geom_point(aes(colour = class)) +
+  scale_x_reverse() +
+  scale_y_log10(breaks = seq(15, 40, by = 5)) +
+  scale_colour_discrete(labels = NULL)
+```
+
+## Legends
+
+To control the overall position of the legend, you need to use a `theme()` setting.
+
+```{r}
+ggplot(mpg, aes(displ, hwy)) +
+  geom_point(aes(colour = class)) +
+  theme(legend.position = "bottom")
+```
+
+## Zooming
+Methods to control the plot limits:
+
+1. Setting `xlim` and `ylim` in `coord_cartesian()` (without clipping)
+    
+    ```{r}
+    ggplot(mpg, mapping = aes(displ, hwy)) +
+      geom_point(aes(color = class)) +
+      geom_smooth() +
+      coord_cartesian(xlim = c(5, 7), ylim = c(10, 30))
+    ```
+
+1. Setting the limits in each scale (with clipping; i.e. removes unseen data points)
+    
+    ```{r}
+    ggplot(mpg, mapping = aes(displ, hwy)) +
+      geom_point(aes(color = class)) +
+      geom_smooth() +
+      xlim(5, 7) + ylim(10, 30)
+    ```
+
+    
+    ```{r}
+    ggplot(mpg, mapping = aes(displ, hwy)) +
+      geom_point(aes(color = class)) +
+      geom_smooth() +
+      scale_x_continuous(limits = c(5, 7)) +
+      scale_y_continuous(limits = c(10, 30))
+    ```
+
+1. Adjusting what data are plotted (manual clipping)
+
+    ```{r}
+    mpg %>%
+      filter(displ >= 5, displ <= 7, hwy >= 10, hwy <= 30) %>%
+      ggplot(aes(displ, hwy)) +
+      geom_point(aes(color = class)) +
+      geom_smooth()
+    ```
+
+## Theme
+You can customise the non-data elements of your plot with a theme.
+
+```{r}
+ggplot(mpg, aes(displ, hwy)) +
+  geom_point(aes(color = class)) +
+  geom_smooth(se = FALSE) +
+  theme_bw()
+```
+
+ggplot2 has eight built-in themes. Many more themes are included in add-on packages like `ggthemes`.
+
+![](ext/visualization-themes.png)
+
+### Exercise
+**Reproduce the following plots as exactly as possible. Do not change size, alpha, and coordinate range from the default setting.**
+
+```{r, echo = TRUE, message= FALSE}
+wine <- read_csv("./wine.csv")
+```
+
+
+**a) Scatter plot showing relationship of residual_sugar, volatile_acidity, and quality for each type of wine. All axes are in log scale.**
+
+(Hint: use 'scale_x_log10()','scale_x_log10()' and 'facet_wrap(~type,  nrow = )' 
+
+```{r, echo = FALSE}
+wine %>% 
+  ggplot(aes(x = volatile_acidity, y = residual_sugar, colour = quality)) + geom_point() +
+  scale_y_log10() + scale_x_log10() + facet_wrap(~ type, nrow = 2)
+```
+
+**b) Histogram showing distribution of qualities for each type of wine**
+
+(Hint: use 'geom_bar(aes(x = , fill = quality), position = "dodge")','coord_flip()', 'labs(x = , y = , title = , subtitle = )' and 'theme(legend.position = )'
+
+```{r, echo = FALSE}
+wine %>% 
+  ggplot() + geom_bar(aes(x = type, fill = quality), position = "dodge") +
+  coord_flip() + labs(x = NULL, y = NULL, title = "Summary on wine qualities", subtitle = "119 red wines, 224 white wines") +
+  theme(legend.position = "top") 
+```
+
+**Acknowledgment** All contents in this note is based on the book “R for Data Science”, written by Grolemund & Wickham.

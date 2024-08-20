@@ -1,0 +1,293 @@
+---
+title: "Session 07: Factors, Dates and Times, and Vectors"
+author: "326.212 전산통계 및 실습"
+institute: "서울대학교 통계학과"
+output: 
+  html_document:
+    keep_md: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, error=TRUE)
+```
+
+
+# Prerequisite
+
+```{r}
+library(tidyverse)
+library(forcats)   # Package for dealing with factors
+library(lubridate) # Package for dealing with dates and times
+```
+
+
+# Factors
+
+Recall that __factor = categorical variables__. `forcats` package contains helpers for manipulating factors.
+
+* reordering factor levels
+    * moving specified levels to front
+    * ordering by first appearance
+    * reversing
+    * randomly shuffling
+* modifying factor levels
+    * collapsing rare levels into other
+    * 'anonymising'
+    * manually 'recoding'
+
+## Reordering levels
+
+Two functions covered in class:
+
+* `fct_relevel`: Reordering by hand.
+* `fct_reorder`: Reordering by sorting along another variable.
+
+```{r}
+gss_cat$relig %>% levels()
+```
+
+```{r}
+gss_cat$relig %>%
+  fct_reorder(gss_cat$tvhours, function(x) mean(x, na.rm = TRUE), .desc = TRUE) %>%
+  levels()
+```
+
+```{r}
+gss_cat$relig %>%
+  fct_relevel(c("Not applicable", "None")) %>%
+  levels()
+```
+
+## Modifying levels
+
+Three functions covered in class:
+
+* `fct_recode`: Modifying by hand.
+* `fct_collapse`: Collapse levels into manually defined groups.
+* `fct_lump`: Lump together least (or most) common factor levels into `"other"`.
+
+```{r}
+gss_cat$partyid %>% table()
+```
+
+```{r}
+gss_cat$partyid %>%
+  fct_recode(
+    "Republican, strong" = "Strong republican",
+    "Republican, weak" = "Not str republican",
+    "Independent, near rep" = "Ind,near rep",
+    "Independent, near dem" = "Ind,near dem",
+    "Democrat, weak" = "Not str democrat",
+    "Democrat, strong" = "Strong democrat",
+    "Other" = "Don't know",
+    "Other" = "No answer",
+    "Other" = "Other party") %>%
+  fct_collapse(
+    "Rep" = c("Republican, strong", "Republican, weak"),
+    "Ind" = c("Independent", "Independent, near rep", "Independent, near dem"),
+    "Dem" = c("Democrat, strong", "Democrat, weak")) %>%
+  table
+```
+
+```{r}
+gss_cat$relig %>% table
+```
+
+```{r}
+gss_cat$relig %>% fct_lump(n = 10) %>% table
+```
+
+---
+
+# Dates and Times
+
+Almost every programming languages has three data types for denoting dates and/or times:
+
+* __Date__ _e.g._, `2017-11-28`.
+* __Time__ _e.g._, `00:01:25`.
+* __Date-time__ _e.g._, `2017-11-28 00:01:25 KST`.
+
+`lubridate` package ([cheatsheet](https://github.com/rstudio/cheatsheets/raw/master/lubridate.pdf)) contains functions to work with date-times and time-spans.
+
+* fast and user friendly parsing of date-time data
+* extraction and updating of components of a date-time
+    * _e.g._ years, months, days, hours, minutes, and seconds
+* algebraic manipulation on date-time and time-span objects.
+
+## Create Date / Time / Date-time
+
+* `make_datetime`, `make_date`.
+* `as_datetime`, `as_date`.
+
+### Parse From String
+
+Recall that __Date / Time / Date-time != String__. Actually, the date-time is the number of seconds that have elapsed since 1970-01-01 00:00:00 UTC.
+
+Nomenclature of string parsers in `lubridate` package:
+
+* Date part. __y__: year, __m__: month, __d__: day.
+* Time part. __h__: hour, __m__: minute, __s__: second.
+* Optional separator between date and time: _ (underscore)
+* Accepts a wide variety of input formats.
+
+![](ext/lubridate.parser.png)
+
+List of `lubridate` parsers
+
+Remarks:
+
+* Some combinations are not implemented; _e.g._ `mhs` and `ymd_ms`
+* Each part accepts a wide variety of formats.
+
+## Getting / Setting Components
+
+There are various accessors including `year`, `month`, `mday`, `yday`, `wday`, and many others.
+
+```{r}
+x <- ymd_hms("2014년 11월 12일 06:00:00", tz = "Asia/Seoul")  # tz: Timezone; default is UTC.
+date(x); day(x); hour(x)
+```
+
+```{r}
+hour(x) <- 20; x
+```
+
+## Arithmetics
+
+Three concepts:
+
+* Periods
+* Durations
+* Intervals
+
+![](ext/math_with_date-times.PNG)
+
+```{r}
+nor <- ymd_hms("2018-01-01 01:30:00", tz = "US/Eastern")  # Normal day
+gap <- ymd_hms("2018-03-11 01:30:00", tz = "US/Eastern")  # Begin summertime
+lap <- ymd_hms("2018-11-04 00:30:00", tz = "US/Eastern")  # End summertime
+
+nor + minutes(90); gap + minutes(90); lap + minutes(90)
+```
+
+```{r}
+nor + dminutes(90); gap + dminutes(90); lap + dminutes(90)
+```
+
+```{r}
+interval(nor, nor + minutes(90)); interval(gap, gap + minutes(90)); interval(lap, lap + minutes(90))
+```
+
+
+---
+
+# Vectors
+
+## Integer vs Double
+
+```{r}
+typeof(1)
+```
+
+```{r}
+typeof(1L)
+```
+
+```{r}
+typeof(1.5L)
+```
+
+```{r}
+as.integer(1.6)
+```
+
+## Finite precision
+
+https://en.wikipedia.org/wiki/Floating-point_arithmetic
+
+```{r}
+(x <- sqrt(2) ^ 2)
+```
+
+```{r}
+x - 2
+```
+
+```{r}
+x - 2 == 0
+```
+
+```{r}
+near(x - 2, 0)
+```
+
+## Special values
+
+```{r}
+c(-1, 0, 1) / 0
+```
+
+```{r}
+max(c())
+```
+
+```{r}
+min(c())
+```
+
+```{r}
+(x <- c(1:10, NA, Inf))
+```
+
+```{r}
+range(x, na.rm=TRUE)
+```
+
+```{r}
+range(x, na.rm=TRUE, finite=TRUE)
+```
+
+## Vector containing multiple types
+
+```{r}
+typeof(c(TRUE, 2L))
+```
+
+```{r}
+typeof(c(1L, 1.5))
+```
+
+```{r}
+typeof(c(1.5, "a"))
+```
+
+## Recycling rules
+
+```{r}
+sample(10) + 100
+```
+
+```{r}
+1:10 + 1:2
+```
+
+```{r}
+tibble(x = 1:4, y = 1:2)
+```
+
+```{r}
+tibble(x = 1:4, y = rep(1:2, 2))
+```
+
+```{r}
+tibble(x = 1:4, y = rep(1:2, each = 2))
+```
+
+```{r}
+tibble(x=1:4, y=1)
+```
+
+
+-----
+
+**Acknowledgment** All contents in this note is based on the book “R for Data Science”, written by Grolemund & Wickham.

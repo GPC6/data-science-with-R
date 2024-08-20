@@ -1,0 +1,32 @@
+---
+title: "출석과제"
+author: "박찬영"
+date: "2023-06-02"
+output: 
+   pdf_document:
+    latex_engine: xelatex
+header-includes:
+- \usepackage[hangul]{kotex}
+- \setmainhangulfont{나눔고딕}
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+<br> \## 예제 1
+
+1부터 100 사이에서 40개의 정수를 비복원 추출하여 저장하시오.
+
+1.  만들어진 벡터를 사용하여 5행 8열의 행렬을 생성하시오.
+
+2.  생성된 행렬에서 2행과 3행만을 추출하여 저장하시오.
+
+3.  생성된 행렬의 7번째 열의 평균과 분산을 구하시오.
+
+```{r 예제 1}
+x1=sample(1:100,40)
+mean(x1)
+
+```

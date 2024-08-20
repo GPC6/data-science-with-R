@@ -1,0 +1,24 @@
+---
+title: "Ch07"
+author: "박찬영"
+date: "2024-08-16"
+output:
+  rmarkdown::html_document:
+    theme: lumen
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## 예제 1 
+
+조하요
+
+```{r 라이브러리}
+library(tidyverse)
+```
+```{r mpg}
+ggplot(data = mpg, mapping = aes(displ, hwy)) +
+    geom_point(size=5)
+```
