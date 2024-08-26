@@ -1,0 +1,29 @@
+---
+title: "realation"
+author: "박찬영"
+date: "2024-08-26"
+output: 
+   pdf_document:
+    latex_engine: xelatex
+header-includes:
+- \usepackage[hangul]{kotex}
+- \setmainhangulfont{나눔고딕}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+tidyverse와 stringr library를 사용합니다.
+문자열을 다룰 때는 stringr이 좋다. (tidyverse에 없음)
+```{r include=FALSE}
+library(tidyverse)
+library(stringr)
+```
+
+```{r string}
+#문자열은 따옴표로 묶기가 기본
+str1 = "This is a string"
+str2 = 'small'
+
+```

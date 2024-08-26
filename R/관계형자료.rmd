@@ -1,0 +1,187 @@
+---
+title: "realation"
+author: "박찬영"
+date: "2024-08-26"
+output: 
+   pdf_document:
+    latex_engine: xelatex
+header-includes:
+- \usepackage[hangul]{kotex}
+- \setmainhangulfont{나눔고딕}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+tidyverse와 nycflights13 library를 사용합니다.
+
+```{r include=FALSE}
+library(tidyverse)
+library(nycflights13)
+```
+
+## 관계형 데이터
+
+nycflights13에는 여러 데이터프레임이 존재한다.
+
+```{r rel}
+flights
+
+airlines #항공사 코드
+airports #공항 코드
+planes #여객기 코드
+weather #공항 날씨
+
+
+```
+`
+`
+
+## 키
+flights 는 여러가지 데이터들과 엮여있고
+코드를 통해 식별된다.
+두 데이터프레임을 연결하는 변수를 키라고 한다.
+자신의 데이터를 고유하게 식별하는걸 기본키 라고한다.
+planes$tailnum은 기본키이다
+
+다른 데이터를 고유하게 식별하면 외래키이다.
+flights$tailnum은 planes를 고유하게 식별하므로 외래키이다.
+
+```{r keys}
+planes %>%
+    count(tailnum) %>%
+    filter(n>1) #tailnum 종류별로 셌을 때 2개 이상 세지지 않으므로 기본키
+
+flights %>%
+    count(year, month, day, tailnum) %>%
+    filter(n>1) #기본키 아님!
+
+#기본키를 만들고 싶기에 row_number를 이용해준다
+#이렇게 만든 키를 대체키라고 한다
+#대체 키를 만들면 데이터 변환 후 대조가 쉽다
+
+```
+`
+`
+## 조인
+
+```{r join}
+flights2 <- flights %>% 
+  select(year:day, hour, origin, dest, tailnum, carrier)
+flights2
+#쉬운 데이터를 하나 만들자
+
+#여기에 airlines 데이터프레임을 추가하자
+flights2 %>% 
+    select(-origin, -dest) %>%
+    left_join(airlines, by="carrier")
+#이러면 carrier에 대응하는 name열이 추가된다
+#그래서 뮤테이팅 조인이다
+
+flights2 %>%
+  select(-origin, -dest) %>% 
+  mutate(name = airlines$name[match(carrier, airlines$carrier)])
+#뮤테이트로 구현하기
+
+#조인함수를 뜯어보자
+
+x <- tribble(
+  ~key, ~val_x,
+     1, "x1",
+     2, "x2",
+     3, "x3"
+)
+y <- tribble(
+  ~key, ~val_y,
+     1, "y1",
+     2, "y2",
+     4, "y3"
+)
+
+inner_join(x, y , by="key")
+#내부조인은 대응 안되는걸 없앤다
+left_join(x,y,by="key")
+#좌측조인은 왼쪽데이터에서 대응 안되는걸 살린다
+right_join(x,y,by="key")
+#우측 조인은 반대
+full_join(x,y,by="key")
+#전체조인은 대응 안되는 걸 다 살린다
+
+#기본적으로 다른 데이터프레임에서 가져오는 경우가 많아서
+#좌측 조인을 많이 쓴다
+
+
+x <- tribble(
+  ~key, ~val_x,
+     1, "x1",
+     2, "x2",
+     2, "x3",
+     1, "x4"
+)
+y <- tribble(
+  ~key, ~val_y,
+     1, "y1",
+     2, "y2"
+)
+
+
+left_join(x,y,by="key")
+#키가 중복될경우 가능한 경우의 수를 다 보여준다
+#이는 데카르트 곱이다
+
+flights2 %>% left_join(weather)
+#by를 안주면 알아서 판단함
+#year month day hour origin으로 맞춰줌
+
+flights2 %>% left_join(airports, c("dest"="faa"))
+#dest에 faa를 결합해서 만든다 (할당 연산자)
+
+#필터링 조인을 해보자
+
+top_dest = flights2 %>% count(dest, sort=TRUE) %>% head(10)
+
+top_dest #상위 10개 목적지
+#이다음에 원하는거만 남길 수 있음
+flights2 %>% filter(dest %in% top_dest$dest)
+#상위 10개 놈들만 남길 수 있다
+
+#이걸 간단히 하는게 semi_join이다
+
+flights2 %>% semi_join(top_dest)
+#세미조인은 열을 추가하는 것이 아닌 겹치는 데이터를 보존한다.
+#매칭 되기만 하면 남긴다
+# 그 반대는 안티조인이다
+flights2 %>% anti_join(top_dest)
+#상위 10개 도착지 빼고 남기기
+
+#anti 조인은 조인이 안되는 놈들을 찾기 좋다
+
+flights2 %>% anti_join(planes, by="tailnum") %>% count(tailnum, sort=TRUE)
+#여기 남은 놈들은 planes에 등록되지 않은 비행기들이다
+
+
+```
+
+## 집합 연산
+
+```{r set}
+#데이터 프레임끼리 집합연산이 가능하다
+df1 <- tribble(
+  ~x, ~y,
+   1,  1,
+   2,  1
+)
+df2 <- tribble(
+  ~x, ~y,
+   1,  1,
+   1,  2
+)
+
+intersect(df1, df2)
+union(df1, df2)
+setdiff(df1, df2)
+setdiff(df2, df1)
+
+#교집합, 합집합, 차집합 다 잘 된다
+```
