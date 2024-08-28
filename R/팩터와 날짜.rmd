@@ -1,0 +1,24 @@
+---
+title: "Factors and Date"
+author: "박찬영"
+date: "2024-08-29"
+output: 
+   pdf_document:
+    latex_engine: xelatex
+header-includes:
+- \usepackage[hangul]{kotex}
+- \setmainhangulfont{나눔고딕}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+tidyverse와 forcats, lubridate library를 사용합니다.
+팩터형은 forcats, 날짜형은 lubridate를 쓰는게 좋다. (tidyverse에 없음)
+```{r include=FALSE}
+library(tidyverse)
+library(forcats)
+library(lubridate)
+library(nycflights13)
+```
