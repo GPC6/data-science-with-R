@@ -1,0 +1,378 @@
+---
+title: "Vectors and iteration"
+author: "박찬영"
+date: "2024-09-01"
+output: 
+   pdf_document:
+    latex_engine: xelatex
+header-includes:
+- \usepackage[hangul]{kotex}
+- \setmainhangulfont{나눔고딕}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+이번엔 R 베이스를 보자
+```{r include=FALSE}
+library(tidyverse)
+```
+
+`
+`
+## 벡터
+
+벡터는 원시벡터와 리스트로 구분된다.
+원시벡터는 한 자료형에 대한 벡터이고, 리스트는 자료형에 구애받지 않는다.
+
+c("Aasd","agd") 는 문자형 원시벡터
+c(FALSE, TRUE) 는 논리형 원시벡터
+c(1,3,4) 는 수치형 원시벡터이다.
+수치형 원시벡터는 다시 double과 integer로 구분된다.
+
+벡터가 비어있으면 NULL이다.
+
+후에 알아보겠지만 R은 벡터가 아닌 데이터가 없다.
+즉 스칼라도 1원소 벡터로 되는것이다.
+예를 들어 charactor라는 자료형은 문자형 벡터라는 자료형이다.
+
+```{r vector}
+letters #문자형 원시벡터
+
+typeof(letters) #charactor라고 뜸 이는 문자형벡터라는 뜻
+typeof("a") #하나짜리도 벡터임 사실
+
+typeof(c("asdf",12,TRUE)) #원시벡터로 만들면 한번에 여러 자료형을 못가진다
+a=c("asdf",12,TRUE)
+#a[2]+1 #에러뜸 12를 문자열로 취급하기 때문
+a[2]
+a[3] #얘도 문자열 취급
+
+#벡터 자료형에 대한 함수로는 is.*()이 있다
+
+is.numeric(c(1,23)) #TRUE
+
+c(a=1,b=2,c=5) #벡터의 각 요소에 이름을 붙일 수 있음
+names(c(a=1,b=2,v=5)) #이름을 반환
+set_names(c(1,1,3),c("a","b","v")) #이름을 붙이는 함수
+
+#리스트를 알아보자
+typeof(list("Asdf",1,TRUE)) #리스트는 이렇게 생성, 여러 자료형을 한번에 가진다
+
+#리스트와 벡터 둘다 자신의 형식을 부분집합으로 갖는다
+#즉 벡터의 한 요소는 벡터이고
+#리스트의 한 요소는 리스트이다
+#벡터의 요소가 벡터인건 자명하다 R은 모두 벡터이기 때문
+
+b <- list(a = 1:3, b = "a string", c = pi, d = list(-1, -5))
+b #리스트이다
+b[1] #이것도 리스트로써의 객체이다, 벡터를 요소로 갖는 1원소 리스트이다
+b[2] #이것도 리스트 문자열을 요소로 갖는 1원소 리스트
+
+#그럼 b의 첫번째 요소인 1:3의 리스트가아닌 벡터자체에 접근하고 싶을경우
+b[[1]] #이렇게 하면된다
+b[[1]][2] #이러면 첫번째 요소에 직접 들어가서 2번째 인덱싱
+
+#원시벡터의 복제
+c(1,2) + c(1)
+#길이가 짧은 두 벡터의 연산은 길이를 긴쪽에 맞춰서 작은쪽이 복제된다
+#연산은 각 원소끼리 대응시켜서 연산한다
+
+c(1,2,3,4) > 2
+#2라는 것도 사실 1원소 벡터라서 4개로 복제되어
+c(1,2,3,4) > c(2,2,2,2) #와 같다
+#결과는 당연히 벡터
+
+#속성
+
+#벡터에 메타 데이터를 속성을 이용해 넣을 수 있다
+
+x=1:10
+
+attr(x,"greeting") #속성을 생성
+attr(x,"greeting") = "Hi!" #속성값을 지정해줘야한다
+x #Hi!
+attr(x,"farewell") = "Bye!"
+x #Hi! Bye!
+
+attributes(x) #속성을 보는법
+
+
+#확장벡터
+#팩터형, 데이트형, 데이트타임형, 티블형은 일반적인 벡터에 객체지향적 요소를 담은 객체이다
+#확장된 벡터로 일반 원시벡터와 다르게 작동한다
+
+x=factor(c("a","b","c"),levels=letters) #팩터
+typeof(x) #팩터형은 정수형 기반이다
+class(x) #팩터라는 것은 정수형 벡터기반 객체이다
+
+x=as_date("1971/01/01") #데이트형 생성
+typeof(x) #더블형
+class(x) #데이트 객체
+unclass(x) #객체를 풀면 실제값은 1970-01-01로 부터 지난 일 수를 가짐
+
+attributes(x) #데이트라는 속성을 가짐
+
+x=ymd_hm("1970/01/01 01:00")
+x 
+
+typeof(x) #더블형
+class(x) #POSIXct 객체
+unclass(x) #오케이?
+
+attributes(x) #객체속성과 tzone에 대한 속성이 있다
+
+
+x=tibble(x=1:5,y=5:1) 
+x
+typeof(x) #얘는 확장 리스트이다
+class(x) #클래스는 3개 data.frame이 있음에 주목, data.frame 클래스를 그대로 상속받음
+
+attributes(x) #클래스 열이름 행이름의 속성을 가짐
+
+
+```
+`
+`
+## 반복문
+
+코딩을 잘하려면 제어문을 잘써야한다.
+반복문과 조건문이지
+
+```{r iteration}
+
+df = tibble(
+    a=rnorm(10),
+    b=rnorm(10),
+    c=rnorm(10),
+    d=rnorm(10)
+)
+#각열의 중앙값을 계산해보자
+#median(df) 같은게 안된다
+
+for(i in 1:length(df)){
+    print(median(df[[i]]))
+}
+#for문 사용 i가 1:length(df)의 요소를 순회한다
+for(i in seq_along(df)){
+    print(median(df[[i]]))
+}
+#이러면 안전 length(df)가 0인 케이스를 피해준다
+#저장해보자
+
+output=c()
+for(i in seq_along(df)){
+    output[i]=median(df[[i]])
+}
+output #이렇게 할 수 있다
+
+output=vector("double",ncol(df))
+for(i in seq_along(df)){
+    output[i]=median(df[[i]])
+}
+output #좀 더 메모리를 효율적으로 쓰는 법
+
+x=c(1,3,5,7)
+y=1:10
+for(i in x){
+    print(y[i])
+} #i는 x를 순회한다 y의 1 3 5 7번째 요소만 낸다
+
+#결과값의 길이를 모르면 어떡하죠?
+#일단 반복수만큼의 리스트를 만들어 저장하고
+#리스트를 해제합니다
+means=c(0,1,2)
+out <- vector("list", length(means))
+for (i in seq_along(means)) {
+  n <- sample(100, 1)
+  out[[i]] <- rnorm(n, means[[i]])
+}
+str(out)
+unlist(out) #이러면 원하는 결과 받는다
+
+#얼마나 반복해야하나요?
+#while()문을 씁시다
+
+flip=function() sample(c("T","H"),1)
+
+head_flip=function() {
+flips=0
+nhead=0
+while(nhead<3) {
+    a=flip()
+    if(a=="H")
+        nhead=nhead+1
+    else
+        nhead=0
+    flips=flips+1
+}
+
+return(flips) #오호
+}
+head_flip()
+# + \alpha 표본평균을 구해볼까..
+output=vector("double",100)
+
+for(i in 1:100) {
+    output[i]=head_flip()
+}
+output
+mean(output) #그렇다네요
+
+#함수형 프로그래밍
+col_summary <- function(df, fun) {
+  out <- vector("double", length(df))
+  for (i in seq_along(df)) {
+    out[i] <- fun(df[[i]])
+  }
+  out
+}
+#이는 함수에 인수로 함수를 전달하는 방법으로
+#이렇게하면 mean median sd에대해 각각의 함수를 일일히 만들 필요가 없다
+
+col_summary(df,median)
+col_summary(df,mean)
+col_summary(df,sd)
+#함수원형을 넣어줘야한다
+
+
+```
+
+## purrr 라이브러리
+
+purrr 라이브러리는 강력하고 for문을 대체한다
+
+```{r purrr}
+#각 데이터에 같은 함수를 적용하는 경우가 꽤나 많다
+#map함수는 벡터를 순회하며 작업을 해준다
+
+map(df,mean) #각 열에 평균함수 적용
+
+map(df, median)
+
+df %>% map(sd) #파이프 이용도 가능~
+
+#근데 결과는 리스트이다
+class(map(df,mean))
+map_dbl(df, mean) #이러면 벡터로 나옴
+
+x= list(list(1,2,3),list(4,5,6), list(8,9,10))
+
+map(x, 2) #각 리스트에서 두번째 요소만 출력
+#map에 숫자만 넣으면 인덱싱의 개념
+
+mtcars %>%
+    split(.$cyl) %>%
+    map(function(df) lm(mpg ~ wt, data=df))
+#cyl별로 쪼개고 lm을 적용하는 함수
+#익명함수의 적용이 귀찮다 함수를 정의해줘야함 새롭게
+
+models = mtcars %>%
+    split(.$cyl) %>%
+    map(~lm(mpg ~ wt, data=.)) #단축 공식 .의 의미는 현재 리스트 요소
+
+models %>%
+    map(summary) %>%
+    map_dbl(~.x$r.squared) #r squared 출력
+
+models %>%
+    map(summary) %>%
+    map_dbl("r.squared") #단축방법
+
+
+#safely 함수를 알아보자
+safe_log = safely(log)
+
+safe_log(10) #결과와 오류가 뜬다
+safe_log("a") #에러내용을 알 수 있음
+
+
+x = list(1,10,"a")
+y= x %>%
+    map(safe_log)
+y #각 리스트 요소마다 안전하게 log를 씌워준다
+
+y= y %>% transpose() #이러면 결과 리스트와 오류 리스트로 분류된다
+
+#오류를 검출하는 법
+is_ok = y$error %>% map_lgl(is_null)
+
+x[!is_ok] #이러면 오류있는 데이터를 찾을 수 있음
+
+y$result[is_ok] %>% unlist() #오류 없는 항 출력
+
+x %>% map(possibly(log, NA_real_)) #이거는 오류나는 항을 NA로 대체해준다
+
+#map2는 이중인수를 받는다
+
+mu=list(5,10,-3)
+sigma=list(1,5,10)
+
+map2(mu, sigma, rnorm, n=5) # 이러면 mu sigma를 대응해 순회하며 rnorm함수를 적용한다 (n=5)
+
+n=list(1,3,5)
+#pmap은 다중인수를 받는다
+
+arg=list(n,mu,sigma) #인수들의 리스트를 만듬
+pmap(arg, rnorm) #이러면 원하는 결과생성
+
+#데이터 프레임을 쓰면 편하다
+
+params <- tribble(
+  ~mean, ~sd, ~n,
+    5,     1,  1,
+   10,     5,  3,
+   -3,    10,  5
+)
+
+params %>% pmap(rnorm) #굿굿
+
+
+#함수도 순회시키고 싶으면?
+
+
+f <- c("runif", "rnorm", "rpois")
+param <- list(
+  list(min = -1, max = 1), 
+  list(sd = 5), 
+  list(lambda = 10)
+)
+
+invoke_map(f, param, n = 5) %>% str() #param의 첫번째 요소에 f의 첫번째 요소를 적용하는 형식
+
+#역시 데이터프레임
+
+sim <- tribble(
+  ~f,      ~params,
+  "runif", list(min = -1, max = 1),
+  "rnorm", list(sd = 5),
+  "rpois", list(lambda = 10)
+)
+
+rs=sim %>%
+    mutate(sim=invoke_map(f,params,n=10))
+
+
+#여러 데이터에 같은 함수를 중복적용하는 방법을 알아보자
+
+dfs <- list(
+  age = tibble(name = "John", age = 30),
+  sex = tibble(name = c("John", "Mary"), sex = c("M", "F")),
+  trt = tibble(name = "Mary", treatment = "A")
+)
+
+dfs %>% reduce(full_join) #세 데이터프레임을 full_join 함수를 한번에 적용해준다
+
+#accumulate는 비슷한데 누적한다
+
+x=1:10
+
+reduce(x, `+`) #모든 요소에 덧셈 적용
+accumulate(x,`+`) #누적 벡터
+
+
+
+
+
+```

@@ -20,5 +20,343 @@ tidyverse와 forcats, lubridate library를 사용합니다.
 library(tidyverse)
 library(forcats)
 library(lubridate)
+library(hms)
 library(nycflights13)
+```
+
+`
+`
+## 팩터형
+
+팩터형 데이터는 범주형 변수를 나타내는 자료형이다
+
+
+```{r factor}
+month_levels = c(
+    "Jan","Feb","Mar","Apr","May","Jun",
+    "Jul","Aug","Sep","Oct","Nov","Dec"
+    ) #가질 수 있는 모든 값의 집합 (level 이라고 함)
+
+x1= factor(c("Mar","Nov","Sep","Jan"), levels=month_levels)
+x1
+
+#기본적으로 벡터를 가지고 변환하는 형식이다
+
+sort(x1) #이러면 알파벳순이 아닌 levels 기준으로 정렬해준다
+x2=c("Jan","zz","Dec")
+factor(x2,levels=month_levels) #없는 값은 NA로
+levels(x1) #가질수 있는 모든 수준 표시
+
+
+gss_cat
+#몇몇 변수들은 fct 형으로 저장되어있다
+gss_cat %>% count(race) #수준은 3개
+```
+
+`
+`
+팩터형 자료를 정렬하고 수정해보자
+
+```{r fac2}
+relig_summary = gss_cat %>% 
+    group_by(relig) %>%
+    summarise(
+        age=mean(age,na.rm=TRUE),
+        tvhours=mean(tvhours, na.rm=TRUE),
+        n=n()
+        )
+
+
+ggplot(relig_summary, aes(tvhours, relig)) +geom_point(size=3)
+
+
+ggplot(relig_summary, aes(tvhours, fct_reorder(relig,tvhours))) +geom_point(size=3)
+
+fct_reorder(relig_summary$relig, relig_summary$tvhours)
+
+#fct_reorder는 팩터를 많은 순서대로 정렬한다
+
+rincome_summary= gss_cat %>% 
+    group_by(rincome) %>% 
+    summarise(
+        age=mean(age,na.rm=TRUE),
+        tvhours=mean(tvhours,na.rm=TRUE),
+        n=n()
+        )
+
+rincome_summary %>% 
+    ggplot(aes(age,fct_reorder(rincome,age)))+geom_point(size=5)
+#다른 예제, 하지만 얘는 정렬 안하느게 좋음
+
+rincome_summary %>% 
+    ggplot(aes(age,rincome))+geom_point(size=5)
+#근데 Not applicable 위치를 내리고 싶다
+
+rincome_summary %>% 
+    ggplot(aes(age,fct_relevel(rincome, "Not applicable")))+geom_point(size=5)
+#fct_relevel은 수준의 순서변경, 먼저쓴게 맨 첫순서가 됨
+
+rincome_summary %>% 
+    ggplot(aes(age,fct_rev(fct_relevel(rincome, "Not applicable"))))+geom_point(size=5)
+#fct_rev는 역순서배치
+
+
+gss_cat %>% count(partyid) #수준이 다양함
+
+gss_cat %>%
+  mutate(partyid = fct_recode(partyid,
+    "Republican, strong"    = "Strong republican",
+    "Republican, weak"      = "Not str republican",
+    "Independent, near rep" = "Ind,near rep",
+    "Independent, near dem" = "Ind,near dem",
+    "Democrat, weak"        = "Not str democrat",
+    "Democrat, strong"      = "Strong democrat"
+  )) %>%
+  count(partyid) #약간 수정해보자
+
+#fct_recode는 수준을 조정하는 함수
+
+
+gss_cat %>%
+  mutate(partyid = fct_recode(partyid,
+    "Republican, strong"    = "Strong republican",
+    "Republican, weak"      = "Not str republican",
+    "Independent, near rep" = "Ind,near rep",
+    "Independent, near dem" = "Ind,near dem",
+    "Democrat, weak"        = "Not str democrat",
+    "Democrat, strong"      = "Strong democrat",
+    "Other"                 = "No answer",
+    "Other"                 = "Don't know",
+    "Other"                 = "Other party"
+  )) %>%
+  count(partyid) #이렇게하면 Other로 통합시키기 가능
+
+gss_cat %>%
+  mutate(partyid = fct_collapse(partyid,
+    other = c("No answer", "Don't know", "Other party"),
+    rep = c("Strong republican", "Not str republican"),
+    ind = c("Ind,near rep", "Independent", "Ind,near dem"),
+    dem = c("Not str democrat", "Strong democrat")
+  )) %>%
+  count(partyid) #이런 방식도 가능
+
+#fct_collapse을 사용 벡터를 이용해 파괴해서 새롭게 할당
+
+gss_cat %>%
+  mutate(relig = fct_lump(relig, n = 10)) %>%
+  count(relig, sort = TRUE) %>%
+  print(n = Inf)
+
+#fct_lump는 소규모 그룹들을 알아서 묶어준다
+```
+
+`
+`
+## 날짜 및 시간
+
+`
+`
+날짜와 시간 데이터를 다뤄보자
+
+날짜 시간 자료형으로는 datetime형과 date형이 있다.
+date형은 연월일,
+datetime형은 연월일시분초이다.
+
+```{r date}
+
+today() #오늘 날짜, 데이트형
+now() #시간까지, 데이트타임형
+
+ymd("2017.01.31") #문자열을 날짜로
+
+myd("12/2003/13") #myd냐 ymd냐에 따라 순서를 자유롭게
+
+ymd_hms("2024/08/29/15/22/15") #연월일 시분초
+
+#얘들은 다 조합가능 mdy_ms dy_hm 등등
+
+#쪼개진 데이터로 날짜 만들기
+
+fl2= flights %>% select(year,month,day,hour,tailnum)
+ 
+fl2 %>% mutate(depaprture = make_datetime(year, month, day,hour))
+#make_datetime은 날짜형을 만들어줌
+
+
+make_datetime_100 <- function(year, month, day, time) {
+  make_datetime(year, month, day, time %/% 100, time %% 100)
+} #함수선언을 통해 만들기 함수는 나중에 배움
+
+flights_dt <- flights %>% 
+  filter(!is.na(dep_time), !is.na(arr_time)) %>% 
+  mutate(
+    dep_time = make_datetime_100(year, month, day, dep_time),
+    arr_time = make_datetime_100(year, month, day, arr_time),
+    sched_dep_time = make_datetime_100(year, month, day, sched_dep_time),
+    sched_arr_time = make_datetime_100(year, month, day, sched_arr_time)
+  ) %>% 
+  select(origin, dest, ends_with("delay"), ends_with("time"))
+
+flights_dt #출발지 목적지 지연시간 예정시간 실제시간 데이터
+
+flights_dt %>%
+    ggplot(aes(dep_time)) + 
+    geom_freqpoly(binwidth=86400)
+
+#하루 단위로 쪼개는 빈도선그래프
+
+as_date(now()) #얘는 데이트-타임형을 데이트로 바꿈
+as_datetime(today()) #얘는 데이트형을 데이트 타임형으로 바꿈
+ 
+flights_dt %>%
+    filter(dep_time < ymd(20130102)) %>% #1월1일만 보기
+    ggplot(aes(dep_time)) + 
+    geom_freqpoly(binwidth=600) + #10분 단위로 끊기
+    theme(aspect.ratio = 1/2)
+
+flights_dt %>% 
+    mutate(wday=wday(dep_time, labe=TRUE)) %>%
+    ggplot(aes(wday)) +
+    geom_bar() +
+    theme(aspect.ratio = 1/2)
+#wday는 날짜데이터를 넣으면 요일로 바꿔준다
+
+flights_dt %>%
+    mutate(minute=minute(dep_time)) %>%
+    group_by(minute) %>%
+    summarise(avg_delay=mean(dep_delay, na.rm=TRUE)) %>%
+    ggplot(aes(minute, avg_delay)) +
+    geom_line() +
+    theme(aspect.ratio = 1/2)
+#minute은 분만 남기기, 실제 출발 분에 따른 딜레이 평균
+
+flights_dt %>%
+    mutate(minute=minute(sched_dep_time)) %>%
+    group_by(minute) %>%
+    summarise(avg_delay=mean(dep_delay, na.rm=TRUE)) %>%
+    ggplot(aes(minute, avg_delay)) +
+    geom_line() +
+    theme(aspect.ratio = 1/2)
+#예정 출발 분에 따른 딜레이 평균
+
+flights_dt %>%
+    mutate(minute=minute(sched_dep_time)) %>%
+    group_by(minute) %>%
+    summarise(avg_delay=mean(dep_delay, na.rm=TRUE), n=n()) %>%
+    ggplot(aes(minute,n)) +
+    geom_line() +
+    theme(aspect.ratio = 1/2)
+#딜레이 된 수가 제각기 달라서 바로 앞의 그래프에서 패턴찾기가 어려움
+
+
+#floor, round, ceiling은 각각 내림 반올림 올림으로
+#floor_date는 날짜를 내림하는 함수로 어느단위로 버리고 올릴지 인수로 전달해줘야한다
+
+flights_dt
+
+flights_dt %>%
+    count(week=floor_date(dep_time,"week")) %>%
+    ggplot(aes(week,n))+
+    geom_line()
+
+#flights_dt %>%
+#   ggplot(aes(dep_time))+
+#   geom_freqpoly(binwidth=86400*7)
+#그냥 한번 해본 freqpoly 사용 이제 알겠다
+
+datetime=today()
+year(datetime) = 2020
+datetime #오늘이 2020이 되는 마법, 할당이 쉽다
+
+update(datetime, year= 2021, month=7,mday=4,hour=18)
+#날짜 막 바꾸기
+
+ymd("2024/02/28") %>% update(mday=40) #자동 이월 ㄹㅇ굿
+
+flights_dt %>%
+    mutate(dep_hour = update(dep_time, yday=1)) %>% #날짜를 다 뭉개버리기 하루로, 남는건 시간
+    ggplot(aes(dep_hour)) +
+    geom_freqpoly(binwidth=300) + #5분단위
+    theme(aspect.ratio = 1/2)
+#연월일을 상수로 뭉개서 시간데이터만 다룰 수 있다
+```
+
+`
+`
+시간에 대한 연산을 해봅시다
+
+```{r timearithmetic}
+h_age = today()-ymd(19791014)
+h_age
+#date형의 뺄셈은 잘 정의되어있다, 날짜 반환
+as.duration(h_age) #초로 기간을 써줌
+
+dyears(1) #연을 초로 변환
+ddays(1) #일을 초로 변환
+
+tomorrow = today()+ddays(1) #내일
+
+one_pm=ymd_hms("20160312 13:00:00",tz="America/New_York")
+one_pm + ddays(1)
+#사실 하루는 24시간이 아니다....
+
+#이상해요잉 periods를 써야한대
+
+one_pm + days(1)
+
+days(1) #하루단위
+
+#비행시간에 대한 계산
+flights_dt %>%
+    filter(arr_time < dep_time) %>%
+    select(origin, dest, dep_time, arr_time)
+#얘들은 overnight flights 이다
+#수정해주자
+
+flights_dt = flights_dt %>%
+    mutate(
+        overnight = arr_time < dep_time,
+        arr_time = arr_time + days(overnight * 1),
+        sched_arr_time = sched_arr_time + days(overnight * 1)
+    )
+
+flights_dt %>%
+    filter(arr_time < dep_time) %>%
+    select(origin, dest, dep_time, arr_time)
+#이제 없다
+
+dyears(1) / ddays(365) #1년이 365일일까?
+
+years(1) / days(1) #과연?
+
+next_year = today() + years(1)
+(today() %--% next_year) / ddays(1) #인터벌형 꽤 복잡
+```
+
+`
+`
+마지막으로 timezone에대해 다루자
+
+```{r tz}
+Sys.timezone()
+
+x1 <- ymd_hms("2015-06-01 12:00:00", tz = "America/New_York")
+x2 <- ymd_hms("2015-06-01 18:00:00", tz = "Europe/Copenhagen")
+x3 <- ymd_hms("2015-06-02 04:00:00", tz = "Pacific/Auckland")
+
+x1
+x2
+x3
+x1-x2 #이러함
+
+x4=ymd_hms(now())
+x4
+x4a=with_tz(x4, tzone="Asia/Shanghai")
+x4a
+x4a-x4 #with_tz 단순히 시간존만 바꿈
+
+x4b=force_tz(x4, tzone="Asia/Shanghai")
+x4b-x4 #시차를 고려해줌
+
+
 ```
