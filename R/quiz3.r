@@ -177,3 +177,27 @@ invest('2022-09-16','2023-01-06')
 invest('2019-06-30','2022-06-30')
 invest('2022-09-16','2022-10-30')
 invest('2021-11-05','2023-01-06')
+
+start_date=c('2022-01-28')
+end_date=c('2023-08-31')
+  start <- parse_date(start_date)
+  end <- parse_date(end_date)
+
+stock2 <- stock %>%
+      filter(stock_date >= start & stock_date <= end) %>%
+      mutate(datenum = as.numeric(parse_date(stock_date)))
+    
+    len_stock2 <- length(stock2$stock_date)
+    stock2$max_date <- rep(0, len_stock2)
+    stock2$max_price <- rep(0, len_stock2)
+    
+    #조건 3 주식 보유 기간 50일 미만 처리
+    maxstock2<-max((stock2$datenum[len_stock2 ]-49))
+    lp<-which(stock2$datenum==maxstock2)
+ for (i in 1:lp) {
+      pp <- stock2%>%
+        filter(datenum>=(datenum[i]+49))
+      stock2$max_date[i] <- pp$datenum[rank(-pp$stock_price) == 1]
+      stock2$max_price[i] <-pp$stock_price[rank(-pp$stock_price) == 1]
+    }
+    
