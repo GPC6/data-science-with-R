@@ -42,6 +42,8 @@ couple_MBTI = data2 %>%
 
 head(couple_MBTI,5)
 
+
+
 couple_MBTI %>%
     count(Man, Woman) %>%
     ggplot(aes(Man, Woman)) +
@@ -93,6 +95,7 @@ is_vowel
 is_vowel %>%
     group_by(vowel) %>%
     summarise(mean_vowel = mean(str_length(name)))
+
 
 #답안 (패턴만들기)
 
