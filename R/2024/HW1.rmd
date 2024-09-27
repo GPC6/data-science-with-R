@@ -1,0 +1,251 @@
+---
+title: "HW1"
+author: "박찬영"
+date: "2024-09-27"
+output:
+  rmarkdown::html_document:
+    theme: lumen
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, eval = TRUE, warning=FALSE, fig.width=6, fig.height=4, out.width = "70%", fig.align = "center")
+```
+
+```{r, message = F}
+# load required packages
+library(tidyverse)
+library(palmerpenguins)
+library(nycflights13)
+```
+
+
+
+
+### Textbook 1.2.5 problem 8
+Recreate the following visualization. 
+What aesthetic should bill_depth_mm be mapped to? 
+And should it be mapped at the global level or at the geom level?
+
+<img src="https://r4ds.hadley.nz/data-visualize_files/figure-html/unnamed-chunk-17-1.png">
+
+```{r}
+#recreate visulalization
+ggplot(penguins,aes(flipper_length_mm,body_mass_g)) +
+  geom_point(aes(color=bill_depth_mm),size=2) +
+  geom_smooth()
+
+#bill_depth_mm 컬럼은 color로 aes에서 mapping 되었다
+#bill_depth_mm 컬럼은 geom수준에서 매핑되어야합니다
+#global에서 매핑될경우 geom_smooth에도 영향을 줍니다
+#bill_depth_mm은 수치형 변수라서 geom_smooth에서 작동을 못합니다
+
+```
+
+
+
+
+### Textbook 1.5.5 problem 6
+
+Why does the following yield two separate legends? 
+How would you fix it to combine the two legends?
+```{r}
+ggplot(
+  data = penguins,
+  mapping = aes(
+    x = bill_length_mm, y = bill_depth_mm, 
+    color = species, shape = species
+  )
+) +
+  geom_point() +
+  labs(color = "Species")
+```
+
+주어진 코드에서 Species로 labs 이름을 지정하여서 species 컬럼과 분리되어서 범례가 보인다.
+단순히 labs()를 없애거나 shape="Species"를 추가하면 된다.
+
+
+다음은 고친 코드와 결과이다
+```{r}
+ggplot(
+  data = penguins,
+  mapping = aes(
+    x = bill_length_mm, y = bill_depth_mm, 
+    color = species, shape = species
+  )
+) +
+  geom_point() +
+  labs(color = "Species",shape="Species") #labs는 없어도 범례가 하나로 보인다
+
+```
+
+
+
+
+### Textbook 9.4.1 problem 7
+
+Recreate the following plot using facet_wrap() instead of facet_grid(). 
+How do the positions of the facet labels change?
+
+```{r}
+ggplot(mpg) + 
+  geom_point(aes(x = displ, y = hwy)) +
+  facet_grid(drv ~ .)
+```
+
+
+다음은 고친 코드이다
+
+
+```{r}
+ggplot(mpg) + 
+  geom_point(aes(x = displ, y = hwy)) +
+  facet_wrap(~drv)
+
+#facet label이 우측에서 위로 간것을 볼 수 있다
+```
+
+
+
+
+### Textbook 11.2.1 problem 2
+
+Recreate the following plot using the fuel economy data. 
+Note that both the colors and shapes of points vary by type of drive train.
+
+<img src="https://r4ds.hadley.nz/communication_files/figure-html/unnamed-chunk-5-1.png">
+
+```{r}
+
+ggplot(mpg,aes(cty,hwy)) +
+  geom_point(aes(color=drv,shape=drv)) +
+  labs(
+    x="City MPG",
+    y="Highway MPG",
+    color="Type of\ndrive train",
+    shape="Type of\ndrive train"
+    )
+```
+
+
+
+
+### Textbook 3.2.5 problem 3
+
+Sort flights to find the fastest flights. 
+(Hint: Try including a math calculation inside of your function.)
+
+```{r}
+flights %>% 
+  arrange(desc(distance/air_time))
+```
+
+
+
+
+### Textbook 3.2.5 problem 4
+
+Was there a flight on every day of 2013?
+
+```{r}
+flights %>% 
+  distinct(year,month,day) %>% 
+  nrow()
+
+#2013년은 윤년이 아니라 365일이므로 모든 날짜에 비행이 있었다
+```
+
+
+
+
+### Textbook 3.5.7 problem 2
+
+Find the flights that are most delayed upon departure from each destination.
+
+```{r}
+flights %>% 
+  group_by(dest) %>% 
+  arrange(desc(dep_delay)) %>% 
+  filter(c(TRUE,rep(FALSE,n()-1)))
+#각 목적지별로 가장 지연된 비행기편만 모아져있다
+#max함수에 NA가 들어가면 문제가 생겨서 정렬 후 첫번째 행들만 모으는 코드를 짰다
+#summarise(most_delay=first(dep_delay))를 쓸 수도 있지만 이러면 각 비행편의 정보가 사라지고
+#filter(dep_delay==first(dep_delay))로 하면 NA==NA의 문제가 발생하여 이렇게 코드를 짰다
+```
+
+
+
+
+### Textbook 12.5.4 problem 3
+
+se if_else() to compute the absolute value of a numeric vector called x.
+
+```{r}
+ab <- function(x) {
+  return(if_else(x>=0,x,-x))
+}
+x <- c(15, -30, 0, -20)
+ab(x)
+
+```
+
+
+
+
+### Textbook 13.3.1 problem 2
+
+Expand the following calls to count() to instead use group_by(), summarize(), and arrange():
+
+  1. flights |> count(dest, sort = TRUE)
+
+  2. flights |> count(tailnum, wt = distance)
+
+```{r}
+#1
+flights %>% 
+  group_by(dest) %>% 
+  summarise(count=n()) %>% 
+  arrange(desc(count))
+
+#2
+flights %>% 
+  group_by(tailnum) %>% 
+  summarise(count=sum(distance))
+```
+
+
+
+
+### Textbook 13.5.4 problem 5
+
+For each destination, compute the total minutes of delay. 
+For each flight, compute the proportion of the total delay for its destination.
+
+```{r}
+flights %>% 
+  group_by(dest) %>% 
+  mutate(total_delay=sum(arr_delay,na.rm=TRUE)) %>% 
+  mutate(prop_delay=arr_delay/total_delay) %>% 
+  select(prop_delay, total_delay, colnames(flights))
+
+#arr_delay 열에는 음수인 데이터도 있는데, 이는 지연이아니라 일찍 출발한 항공편이다
+#그런 항공편들에 대해서는 목적에따라 제거하거나 절댓값을 씌우는 등의 추가적인 조치를 취할 수 있다
+
+#이는 실제로 "지연"된 항공편만 본 것이다
+flights %>% 
+  filter(arr_delay>=0) %>% 
+  group_by(dest) %>% 
+  mutate(total_delay=sum(arr_delay,na.rm=TRUE)) %>% 
+  mutate(prop_delay=arr_delay/total_delay) %>% 
+  select(prop_delay, total_delay, colnames(flights))
+
+#이는 음수값에 절댓값을 씌워서 도착시간의 변동에 주목한 것이다
+flights %>%
+  mutate(arr_delay=ab(arr_delay)) %>%  #우리가 아까 만든 함수다 
+  group_by(dest) %>% 
+  mutate(total_delay=sum(arr_delay,na.rm=TRUE)) %>% 
+  mutate(prop_delay=arr_delay/total_delay) %>% 
+  select(prop_delay, total_delay, colnames(flights))
+
+#목적에 맞춰서 사용할 수 있다
+```
