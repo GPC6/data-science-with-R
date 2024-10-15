@@ -26,21 +26,20 @@ geom_freqpoly(aes(color=manufacturer), binwidth=10)
 
 authors_df <- assign_gender(data_df = authors, first_name_col = "first_name")
 authors_df %>% 
-    group_by(gender, publication_years) %>% 
-    group_by(gender) %>%
-    mutate(count=n()) %>%
+    group_by(gender) %>% 
+    mutate(counts=n()) %>%
     filter(gender!="U") %>%
     group_by(gender, publication_years) %>%
-    summarise(publicaiton_count = n(), count=first(count)) %>%
+    summarise(publicaiton_count = n(), counts=first(counts)) %>%
     arrange(gender, desc(publicaiton_count)) %>%
-    summarise(most_published_year=first(publication_years),count=first(count))
+    summarise(most_published_year=first(publication_years),counts=first(counts))
 
 
 #답안
 temp=authors_df %>%
     filter(gender != "U") %>%
     group_by(gender) %>%
-    count(publication_years)
+    count(publication_years) %>% 
     summarise(most_published_year = publication_years[rank(n)==length(n)],count=sum(n))
 #미친문법 count함수와 rank와 length를 이용해 1등만 골라먹기 하는 미친 테크닉
 #count = 그룹핑 두개 + 요약

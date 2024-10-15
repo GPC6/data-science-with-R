@@ -75,6 +75,13 @@ heart_disease %>%
     group_by(sex) %>%
     summarise(mean_age = mean(age), most_common_cp=first(cp),count=first(n_cp))
 
+heart_disease %>% 
+  group_by(sex,cp) %>% 
+  count() %>% 
+  group_by(sex) %>% 
+  summarise(most_common_cp_types=as.integer(cp[rank(n)==length(n)]),count=n[rank(n)==length(n)]) %>% 
+  mutate(mean_age=c(mean(heart_disease$age[heart_disease$sex==0]),mean(heart_disease$age[heart_disease$sex==1])))
+
 
 ggplot(heart_disease,aes(age,chol)) +
     geom_point(aes(color=num)) +

@@ -103,13 +103,37 @@ parse_datetime("20240823") #이런 느낌
 ## 도전 문제풀이!
 
 ```{r challenge}
-data=read_csv("F:\\data\\challenge.csv", guess_max = 1000)
+challenge <- with_edition(
+  1,
+  read_csv(readr_example("challenge.csv"))
+)
+problems(challenge)
 
-problems(data)
+challenge <- read_csv(
+    readr_example("challenge.csv"), 
+    col_types = cols(
+      x = col_double(),
+      y = col_date()
+    )
+  )
 
-#요즘은 잘 되는듯
+challenge2 <- read_csv(readr_example("challenge.csv"), guess_max = 1001)
+challenge2 <- read_csv(readr_example("challenge.csv"), 
+      col_types = cols(.default = col_character())
+    ) #무조건 캐릭터로 읽기
+
 #기본적으로 problems와 read_csv인수
 #col_type= cols(col_*()~~) 을 이용해서 열의 자료형을 잘 바꿔주는것이다.
+
+df <- tribble(
+  ~x,  ~y,
+  "1", "1.21",
+  "2", "2.32",
+  "3", "4.56"
+)
+df
+type_convert(df)
+
 
 #파일저장
 write_csv(data, "test.csv")
