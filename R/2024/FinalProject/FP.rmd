@@ -1,0 +1,58 @@
+---
+title: "Final Project"
+author: "박찬영"
+date: "2024-11-22"
+output:
+  rmarkdown::html_document:
+    theme: lumen
+---
+
+<style>
+  .answer{
+    background-color: #f8f9fa;
+    color: #343a40;
+    font-family: 'Arial', sans-serif;
+    font-size: 16px;
+    line-height: 1.5;
+    padding: 10px 15px;
+    border-left: 4px solid #007bff;
+    border-radius: 5px;
+    margin: 15px auto;
+    max-width: 800px;
+    word-break: break-word;
+  }
+  </style>
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+  eval = TRUE,
+  warning = FALSE,
+  fig.width = 6,
+  fig.height = 4,
+  out.width = "70%",
+  fig.align = "center"
+)
+```
+
+```{r library, message = FALSE}
+library(tidyverse)
+```
+
+```{r dataload}
+wd <- paste0(getwd(), "\\R\\2024\\FinalProject\\")
+nine11 <- read_csv(paste0(wd, "911.csv"))
+brfss <- read_csv(paste0(wd, "brfss2023.csv"))
+modules <- read_csv(paste0(wd, "modules.csv"))
+scf <- read_csv(paste0(wd, "scf_data.csv"))
+scorecard <- read_csv(paste0(wd, "scorecard.csv"))
+states <- read_csv(paste0(wd, "states.csv"))
+```
+
+
+```{r}
+```
+
+<p class="answer">
+  입력
+</p>

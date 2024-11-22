@@ -1,0 +1,240 @@
+---
+title: "quiz 2"
+author: "박찬영"
+date: "2024-10-30"
+output:
+  rmarkdown::html_document:
+    theme: lumen
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+  eval = TRUE,
+  warning = FALSE,
+  fig.width = 6,
+  fig.height = 4,
+  out.width = "70%",
+  fig.align = "center"
+)
+```
+
+load required packages
+
+```{r library, message = FALSE}
+library(tidyverse)
+library(palmerpenguins)
+```
+
+
+
+
+### Problem 1 [10점]
+
+`ggplot2` 패키지의 `diamonds` 데이터를 이용하는 문제입니다.
+
+
+#### (a) `carat`이 0.99인 다이아몬드의 수와 1인 다이아몬드의 수를 table로 출력하시오. [3점]
+* Single pipeline으로 작성하시오. [1점]
+
+```{r 1.a}
+diamonds %>%
+  filter(carat %in% c(0.99, 1)) %>%
+  count(carat)
+```
+
+#### (b) 다이아몬드 중량의 분포를 bar chart를 통해 나타내어라. [3점]
+* `carat`의 범위는 0.9 ~ 1.1로 설정한다.
+* `geom_bar` 혹은 `geom_histogram` 함수를 사용한다.
+* `binwidth`는 0.01로 설정한다.
+
+```{r 1.b}
+diamonds %>%
+  filter(carat >= 0.9, carat <= 1.1) %>%
+  ggplot(aes(x = carat)) +
+  geom_histogram(binwidth = 0.01)
+```
+
+
+#### (c) (a)와 (b)의 결과를 토대로 `carat`에 대해 알 수 있는 내용을 서술하시오. [4점]
+
+```{r 1.c}
+# 다이아몬드는 1.1 캐럿이 제일 많고 점점 줄어든는 것을 확인할 수 있다.
+# 0.9 캐럿이후 다이아몬드의 수가 감소하다가, 1캐럿일 때 급격하게 증가한다.
+```
+
+
+### Problem 2 [28점]
+
+`dplyr` 패키지의 `storms`는 미국에서 1975 ~ 2021년 사이에 발생한 태풍에 관한 데이터이며, 주요 변수에 대한 설명은 다음과 같다.
+
+* `name` : 태풍의 이름
+* `year`, `month`, `day`, `hour` : 년, 월, 일, 시간
+* `lat`, `long` : 위도, 경도
+* `wind` : 태풍의 최대 풍속 (knots)
+* `pressure` : 태풍 중심의 기압 (millibars)
+
+
+#### (a) 해마다 발생한 태풍의 수를 table로 출력하시오. [3점]
+* 발생한 태풍의 수를 기준으로 내림차순으로 정렬하시오. [1점]
+
+```{r 2.a}
+storms %>%
+  count(year, sort = TRUE)
+```
+
+#### (b) 시각화를 통하여 `wind`와 `pressure`의 관계를 설명하시오. [4점]
+* `geom_point`와 `geom_smooth`를 사용하여 시각화하시오. [2점]
+* plot에 대한 해석을 서술하시오. [2점]
+
+```{r 2.b}
+ggplot(storms, aes(wind, pressure)) +
+  geom_point() +
+  geom_smooth()
+
+#태풍의 최대 풍속이 높을수록, 태풍 중심의 기압이 낮아진다.
+#음의 상관관계를 보인다.
+```
+
+#### (c) 시각화를 통하여 월별 `wind`의 분포에 대해 설명하시오. [4점]
+* `geom_boxplot`을 사용하여 시각화하시오. [2점]
+* plot에 대한 해석을 서술하시오. [2점]
+
+```{r 2.c}
+ggplot(storms, aes(as.factor(month), wind)) +
+  geom_boxplot() +
+  xlab("month")
+
+#2, 3월에는 태풍이 없었다.
+#가장 큰 풍속은 8월에 존재했고, 평균적인 풍속은 1월이 제일 높다.
+```
+
+#### (d) 1975년에 발생한 태풍 중 지속 시간이 가장 긴 3개의 태풍을 찾아서 이름과 지속 시간을 table로 출력하시오. [7점]
+* 하나의 행마다 태풍은 6시간이 지속된다고 가정하며, 지속시간의 단위는 시간으로 계산하시오.
+* Single pipeline으로 작성하시오. [2점]
+
+```{r 2.d}
+storms %>%
+  filter(year == 1975) %>%
+  count(name, month, day) %>%
+  group_by(name) %>%
+  summarise(duration = sum(n) * 6) %>%
+  arrange(desc(duration)) %>%
+  head(3)
+```
+
+#### (e) (d)에서 찾은 3개의 태풍의 진행 경로를 시각화하고자 한다. 다음의 조건을 참고하여 아래의 그래프를 재현하시오. [10점]
+* 지도는 `maps` 패키지의 `world` 데이터를 사용한다. 육지의 색은 `gray95`, 경계선의 색은 `gray70`으로 설정한다. [2점]
+(Hint : `map_data("world")`)
+* 위도, 경도를 이용하여 태풍의 진행 경로를 표시하시오. 각 태풍의 진행 경로는 색을 통해 구분하며, 태풍의 풍속을 원의 크기로 나타낸다. [4점]
+* 투명도를 적절하게 조절하시오. [1점]
+* 지도를 다음 조건에 맞게 확대하시오. (`longitude` : -150 ~ 0, `latitude` : 0 ~ 80) [1점]
+* x축은 “Longitude”, y축은 “Latitude”, 제목은 “Path of storms”로 설정하시오. [1점]
+* 배경테마는 black&white (bw)를 사용한다. [1점]
+
+<img src="F:\\data\\quiz2_img1.png">
+
+```{r 2.e}
+target_storm <- storms %>%
+  filter(year == 1975, name %in% c("Eloise", "Gladys", "Caroline"))
+
+world <- map_data("world")
+
+ggplot(world, aes(long, lat)) +
+  geom_polygon(aes(group = group), fill = "gray95", colour = "gray70") +
+  geom_point(data = target_storm, aes(size = wind, color = name), alpha = 0.6) +
+  xlim(c(-150, 0)) +
+  ylim(c(0, 80)) +
+  labs(title = "Path of storms", x = "Longitude", y = "Latitude") +
+  theme_bw()
+```
+
+
+
+### Problem 3
+
+`palmerpenguins` 패키지의 `penguins` 데이터를 이용하는 문제이며, 주요 변수에 대한 설명은 다음과 같다.
+
+* `species` : 펭귄의 종
+* `island` : 펭귄의 서식지
+* `bill_length_mm` : 부리의 길이 (mm)
+* `bill_depth_mm` : 부리의 두께 (mm)
+
+<img src="F:\\data\\quiz2_img3.png">
+
+
+#### (a) `penguins` 데이터에서 결측치가 존재하는 행을 제거하고 제거된 행의 개수를 구하시오. [3점]
+* 결측치가 제거된 데이터를 `penguins_clean`에 저장하고 `head()`를 이용하여 첫 10개의 행을 출력하시오. [2점]
+* 제거된 행의 개수를 출력하시오. [1점]
+
+```{r 3.a}
+penguins_clean <- na.omit(penguins)
+head(penguins_clean, 10)
+
+nrow(penguins) - nrow(penguins_clean) #제거된 행의 개수
+```
+
+#### (b) `penguins_clean` 데이터를 이용하여 아래의 그래프를 재현하시오. [7점]
+* 각 종의 개체수를 서식지 별로 구분하여 나타내는 bar plot을 그리시오. [4점]
+* 각 종의 개체수를 bar plot에 숫자로 표시하시오. [2점]
+* 그래프의 제목은 “Distribution of Species on Different Islands”, x축은 “species”, y축은 “count”로 설정하시오. [1점]
+
+<img src="F:\\data\\quiz2_img2.png">
+
+```{r 3.b}
+ggplot(penguins_clean, aes(x = species, fill = island)) +
+  geom_bar() +
+  geom_text(
+    aes(label = after_stat(count)),
+    stat = "count",
+    position =  position_stack(vjust = 0.5)
+  ) +
+  labs(
+    title = "Distribution of Species on Different Islands",
+    x = "species",
+    y = "count"
+  ) +
+  theme_bw()
+```
+
+#### (c) `bill_length_mm`과 `bill_depth_mm`의 관계를 시각화를 통해 알아보고자 한다. 다음의 조건을 따라 2개의 산점도를 그리고 해석을 서술하시오. [그림 8점 + 해석 4점]
+그림 1
+
+* `penguins_clean` 데이터를 이용하여 `bill_length_mm`과 `bill_depth_mm`의 산점도를 그리시오. [2점]
+* `geom_smooth`의 `method = "lm"` 옵션을 활용하여 회귀직선을 그리시오. [1점]
+* x축은 “Length”, y축은 “Depth”, 제목은 “Scatter plot of Bill length and Bill depth”로 설정하시오. [1점]
+
+```{r 3.c.1}
+ggplot(penguins_clean, aes(bill_length_mm, bill_depth_mm)) +
+  geom_point() +
+  geom_smooth(method = "lm") +
+  labs(
+    title = "Scatter plot of Bill length and Bill depth",
+    x = "Length",
+    y = "Depth"
+  )
+```
+
+
+그림 2
+
+* 종에 따라 색을 다르게하여 `bill_length_mm`과 `bill_depth_mm`의 산점도와 회귀직선을 다시 그리시오. [3점]
+* 축과 제목은 그림 1과 동일하게 설정하시오. [1점]
+
+```{r 3.c.2}
+ggplot(penguins_clean, aes(bill_length_mm, bill_depth_mm, color = species)) +
+  geom_point() +
+  geom_smooth(method = "lm") +
+  labs(
+    title = "Scatter plot of Bill length and Bill depth",
+    x = "Length",
+    y = "Depth"
+  )
+
+#심슨의 역설
+
+
+
+
+solve(matrix(c(1,1,1,1,-1,1,-1,1,1), ncol = 3))
+```

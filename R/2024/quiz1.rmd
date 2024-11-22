@@ -1,0 +1,212 @@
+---
+title: "Quiz 1"
+author: "박찬영"
+date: "2024-10-16"
+output:
+  rmarkdown::html_document:
+    theme: lumen
+---
+
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, eval = TRUE, warning=FALSE, fig.width=6, fig.height=4, out.width = "70%", fig.align = "center")
+```
+
+
+Load packages
+```{r message=FALSE}
+library(tidyverse)
+library(nycflights13)
+```
+
+
+### Problem 1
+
+**Expand the following calls to `count()` to instead use `group_by()`, `summarize()`, and `arrange()`.**
+
+The code for each sub-question must be written in a single pipeline(2 pts each), using pipe operator(%>%).
+
+(a) [7점] flights %>% count(dest, sort=TRUE)
+
+(b) [7점] flights %>% count(tailnum, wt=distance)
+
+```{r 1}
+#(a)
+flights %>% 
+    group_by(dest) %>% 
+    summarise(n=n()) %>% 
+    arrange(desc(n))
+
+#(b)
+flights %>% 
+    group_by(tailnum) %>% 
+    summarise(n=sum(distance))
+
+```
+
+### Problem 2
+
+다음의 코드를 실행하여 바람의 돌풍 속도(wind_gust)가 결측인 데이터를 제외하고 주요 변수만을 포함한 결과를 wthr에 저장하시오.
+```{r 2.given_code}
+wthr = weather %>% 
+  filter(!is.na(wind_gust)) %>% 
+  select(origin, year, month, day, hour, wind_gust)
+head(wthr)
+```
+
+`wthr` **데이터를 이용해, 다음의 조건을 참고하여 아래의 그래프를 재현하시오.**
+
+* [4점] 공항 코드(origin)별 바람의 돌풍 속도(wind_gust)의 box plot을 색을 통해 구분한다.
+
+* [7점] 공항 코드별 이상점은 실제 값에서 랜덤하게 흩뜨려져 표시한다.
+        (단, geom_boxplot(outlier.shape=NA)과 geom_point()를 사용한다.)
+
+* [3점] 그래프의 제목은 ’Boxplot of gust speed’이며, y축 이름은 제거한다.
+
+* [3점] 범례는 그래프의 왼쪽에 위치한다.
+
+* [3점] 배경테마는 black & white (bw)를 사용한다.
+
+```{r 2.problem}
+
+wthr_outlier <- wthr %>% 
+    group_by(origin) %>% 
+    mutate(out = quantile(wind_gust)["75%"]+1.5*IQR(wind_gust)) %>% 
+    filter(wind_gust>out)
+
+ggplot(wthr,aes(origin,wind_gust)) +
+geom_boxplot(aes(color=origin),outlier.shape = NA) +
+geom_point(data=wthr_outlier,aes(origin,wind_gust,color=origin),position = "jitter") +
+labs(title="Boxplot of gust speed",y="") +
+theme_bw() +
+theme(legend.position = "left")
+
+```
+
+
+### Problem 3
+
+**다음의 코드를 실행하여 score.csv파일의 데이터를 score 변수에 저장하시오.** (결측치(NA)는 존재하지 않는다.)
+
+```{r 3.read_data}
+score = read_csv('F:\\data\\score.csv')
+head(score)
+```
+
+`score.csv`는 프로젝트에 참여한 191명의 대상자에 대한 데이터이며, 각 변수는 다음의 정보를 담고 있다.
+
+* `id_num` : 대상자의 고유 응시번호
+
+* `group` : 대상자가 속한 그룹(A, B, C)
+
+* `ev1 - ev5` : 5명의 심사위원이 부여한 점수
+
+
+`
+
+
+아래 문항에 답하시오. (총 7문항)
+
+(a) [3점] **각 그룹에 대해, 그룹에 속한 대상자의 수를 출력하시오.**
+
+```{r 3.a}
+score %>% group_by(group) %>% summarise(n=n())
+```
+
+
+(b) [3점] **`summarize()`를 이용하여 첫번째 심사위원 평가(ev1)의 *최고* 득점자와 두번째 심사위원 평가(ev2)의 *최저* 득점자의 응시번호를 출력하시오.**
+(이 두 항목의 동점자는 존재하지 않는다.)
+* 단, `summarize()`를 이용한 single pipeline으로 작성해야 하며(2점), 결과는 아래의 형태로 출력되어야 한다.
+
+ev1_max | ev2_min 
+:--- | :---: 
+T0177   | T0043
+
+```{r 3.b}
+score %>% summarise(
+    ev1_max=id_num[rank(ev1)==length(ev1)],
+    ev2_min=id_num[rank(ev2)==1]
+)
+
+```
+
+
+
+(c) [4점] 각 대상자의 최종 점수는 5명의 심사위원이 부여한 점수 중 최저점 1개를 제외한 4개 점수의 평균값으로 사용한다.
+모든 대상자의 최종점수를 산출하여 fin 열로 데이터에 추가하시오.
+* 최저점이 동점인 경우 1개만 제외하며, 결과를 score_fin으로 저장하고 출력한다.
+
+```{r 3.c}
+new_min <- function(v1,v2,v3,v4,v5){
+    return(pmap_dbl(list(v1,v2,v3,v4,v5),min))
+}
+
+score_fin <- score %>% 
+    mutate(fin=(ev1+ev2+ev3+ev4+ev5-new_min(ev1,ev2,ev3,ev4,ev5))/4)
+
+score_fin
+```
+
+
+(d) [4점] 대상자별 최종점수를 이용해 아래와 같은 히스토그램을 그리시오.
+* 단, 다음의 기준을 만족하여야 한다.
+
+    * 그룹별 히스토그램은 색으로 구분되며 별개의 count를 가진다.
+
+    * 구간(bin)의 개수는 25개로 설정한다.
+
+    * 투명도(alpha)는 0.5를 사용한다.
+  
+<img src="F:\\data\\quiz_img.png">
+
+```{r 3.d}
+ggplot(score_fin,aes(x=fin)) +
+geom_histogram(aes(fill=group), bins = 25, alpha = 0.5,position = "identity")
+```
+
+(e) [4점] i번째 대상자의 최종점수에 대해, 전체 대상자 중에서의 오름차순 순위를 Ri, 속한 그룹 내에서의 오름차순 순위를 Si라고 하자.
+**모든 대상자에 대해 두 유형의 순위(R과 S)를 계산하여 각각 `ovr_rank`와 `gr_rank` 열로 데이터에 추가하시오.**
+* 최종점수가 동점인 경우는 없음을 확인하였으며, 결과를 `score_rank`로 저장하고 출력한다.
+
+```{r 3.e}
+score_fin %>% count(fin) %>% filter(n>1) #동점자 없음
+
+
+
+
+score_rank <- score_fin %>% 
+    mutate(ovr_rank=rank(fin)) %>% 
+    group_by(group) %>% 
+    mutate(gr_rank=rank(fin))
+
+```
+
+(f) [4점] 아래와 같이 ovr_rank(x축)와 gr_rank(y축)의 산점도와 추세선을 그리시오.
+* 단, 다음의 기준을 만족하여야 한다.
+
+    * 그룹별 산점도는 색으로 구분된다.
+
+    * 전체 데이터에 대한 검정색(black) 추세선(smoothing line)이 신뢰구간 음영(band)없이 표시된다.
+
+    * x축과 y축의 이름은 각각 ’Overall Rank’와 ’Group Rank’로 설정한다.
+
+<img src="F:\\data\\quiz_img2.png">
+
+```{r 3.f}
+ggplot(score_rank,aes(ovr_rank,gr_rank)) +
+geom_smooth(se=FALSE,color="black")+
+geom_point(aes(color=group)) +
+labs(x="Overall Rank",y="Group Rank")
+```
+
+
+
+```{r 3.g}
+score_rank %>% 
+    ungroup() %>% 
+    summarise(
+        value=sum((ovr_rank-mean(ovr_rank))*(gr_rank-mean(gr_rank)))/sqrt(sum((ovr_rank-mean(ovr_rank))^2)*sum((gr_rank-mean(gr_rank))^2))
+        )
+
+```

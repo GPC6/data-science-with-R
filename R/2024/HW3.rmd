@@ -1,0 +1,259 @@
+---
+title: "HW3"
+author: "박찬영"
+date: "2024-11-11"
+output:
+  rmarkdown::html_document:
+    theme: lumen
+mainfont: Arial
+---
+
+<head>
+  <style>
+    code {
+      font-family: "Arial"
+    }
+  </style>
+</head>
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+  eval = TRUE,
+  warning = FALSE,
+  fig.width = 6,
+  fig.height = 4,
+  out.width = "70%",
+  fig.align = "center"
+)
+```
+
+```{r library, message = FALSE}
+library(tidyverse)
+library(nycflights13)
+library(babynames)
+```
+
+
+### Textbook 5.2.1 problem 2
+
+Sketch out the process you’d use to calculate rate the for table2. 
+You will need to perform four operations
+
+(a) Extract the number of TB cases per country per year.
+(b) Extract the matching population per country per year.
+(c) Divide cases by population, and multiply by 10000.
+(d) Store back in the appropriate place.
+
+```{r 1}
+cases <- table2 %>%
+  filter(type == "cases") %>%
+  .$count
+
+population <- table2 %>%
+  filter(type == "population") %>%
+  .$count
+
+rate <- cases / population * 10000
+
+tidy_table2 <- table2 %>%
+  mutate(rate = rep(rate, each = 2))
+
+tidy_table2
+```
+
+
+
+### Textbook 7.2.4 problem 5
+
+Identify what is wrong with each of the following inline CSV files.
+What happens when you run the code?
+
+```{r 2}
+read_csv("a,b\n1,2,3\n4,5,6")
+#변수의 수와 데이터의 수가 맞지않는다.
+#a에 1, 4 b에 23, 56이 들어가 버린다.
+read_csv("a,b,c\n1,2\n1,2,3,4")
+#변수는 세개를 주었다. 그러나 첫번째 데이터는 1, 2만 주어서 c가 na가 됐다.
+#그리고 두번째 값은 1,2,3,4를 줘서 c가 34가 되어버렸다.
+read_csv("a,b\n\"1")
+#\"를 열기만 하고 닫지 않아서 1이라는 값이 읽히지 않는다.
+read_csv("a,b\n1,2\na,b")
+#마지막에 준 a,b가 각각의 데이터로 들어가서 전체 문자열 벡터 c("1", "a")와 c("2", "b")가 담기게 됐다.
+#자료형이 안맞는 문제이다.
+read_csv("a;b\n1;3")
+#delimeter가 ,인데 ;으로 구분하여서 문제가 생겼다.
+#a;b자체가 하나의 열이되고 1;3자체가 하나의 값이 되어버렸다.
+```
+
+
+
+### Textbook 19.3.4 problem 3
+
+Does every departing flight have corresponding weather data for that hour?
+
+```{r 3}
+weather %>% summarise(sum(is.na(temp)))
+#weather 데이터의 temp 결측치는 1개이다.
+flights %>%
+  left_join(weather, by = c("origin", "year", "month", "day", "hour")) %>%
+  select(origin, year, month, day, hour, temp) %>%
+  summarise(sum(is.na(temp)))
+#flights와 weather를 origin과 시간을 기준으로 병합하였다.
+#이때 temp의 결측치가 1573개 인 것으로 보아 모든 출발시간에 대응되는 날씨 데이터가 있지 않다.
+```
+
+
+
+### Textbook 14.2.4 problem 1
+
+Create strings that contain the following values:
+
+1. `He said "That's amazing!"`
+
+2. `\a\b\c\d`
+
+3. `\\\\\\`
+
+```{r 4}
+str <- c(
+  "He said \"That's amazing!\"",
+  "\\a\\b\\c\\d",
+  "\\\\\\\\\\\\"
+)
+str_view(str)
+```
+
+
+
+### Textbook 14.3.4 problem 1
+
+Compare and contrast the results of `paste0()` with `str_c()` for the following inputs:
+
+```{r 5}
+str_c("hi ", NA)
+#NA가 출력되어버린다.
+#1 str_c(letters[1:2], letters[1:3])
+#위 코드는 두 문자열 벡터의 크기가 맞지않아 컴바인이 안된다.
+paste0("hi ", NA)
+#NA마저 문자열로 합쳐버린다
+paste0(letters[1:2], letters[1:3])
+#벡터 반복으로 문자열 벡터끼리 붙인다.
+```
+
+
+
+### Textbook 15.3.5 problem 1
+
+What baby name has the most vowels? 
+What name has the highest proportion of vowels? (Hint: what is the denominator?)
+
+```{r 6}
+names <- babynames %>% distinct(name)
+names %>%
+  mutate(vowel = str_count(name, "[aeiouAEIOU]")) %>%
+  mutate(prop = vowel / str_length(name)) %>%
+  arrange(desc(prop))
+#Eua Ea Ai Ia Ii Aoi Io Aia 가 모음비율 100% 이름들이다
+```
+
+
+
+### Textbook 15.4.7 problem 3
+
+Given the corpus of common words in `stringr::words`, create regular expressions that find all words that:
+
+(a) Start with “y”.
+(b) Don’t start with “y”.
+(c) End with “x”.
+(d) Are exactly three letters long. (Don’t cheat by using str_length()!)
+(e) Have seven letters or more.
+(f) Contain a vowel-consonant pair.
+(g) Contain at least two vowel-consonant pairs in a row.
+(h) Only consist of repeated vowel-consonant pairs.
+
+```{r 7}
+a <- str_subset(words, "^y")
+a
+b <- str_subset(words, "^y", negate = TRUE)
+b
+c <- str_subset(words, "x$")
+c
+d <- str_subset(words, "^[a-zA-Z]{3}$")
+d
+e <- str_subset(words, "^[a-zA-Z]{7,}")
+e
+f <- str_subset(words, "[aeiou][^aeiou]")
+f
+g <- str_subset(words, "([aeiou][^aeiou]){2,}")
+g
+h <- str_subset(words, "^([aeiou][^aeiou])+$")
+h
+```
+
+
+
+### Textbook 15.4.7 problem 4
+
+Create 11 regular expressions that match the British or American spellings for each of the following words: airplane/aeroplane, aluminum/aluminium, analog/analogue, ass/arse, center/centre, defense/defence, donut/doughnut, gray/grey, modeling/modelling, skeptic/sceptic, summarize/summarise. Try and make the shortest possible regex!
+
+```{r 8}
+str_detect(c("airplane", "aeroplane"), "a(ir|ero)plane")
+str_detect(c("aluminum", "aluminium"), "alumin(i?)um")
+str_detect(c("analog", "analogue"), "analog(ue)?")
+str_detect(c("ass", "arse"), "a(ss|rse)")
+str_detect(c("defense", "defence"), "defen(s|c)e")
+str_detect(c("donut", "doughnut"), "do(ugh)?nut")
+str_detect(c("gray", "grey"), "gr(a|e)y")
+str_detect(c("modeling", "modelling"), "modell?ing")
+str_detect(c("skeptic", "sceptic"), "s(k|c)eptic")
+str_detect(c("summarize", "summarise"), "summari(z|s)e")
+```
+
+
+
+### Textbook 17.2.5 problem 3
+
+For each of the following date-times, show how you’d parse it using a readr column specification and a lubridate function.
+
+```{r 9}
+d1 <- "January 1, 2010"
+parse_date(d1, format = "%B %d, %Y")
+mdy(d1)
+d2 <- "2015-Mar-07"
+parse_date(d2, format = "%Y-%b-%e")
+ymd(d2)
+d3 <- "06-Jun-2017"
+parse_date(d3, "%e-%b-%Y")
+dmy(d3)
+d4 <- c("August 19 (2015)", "July 1 (2015)")
+parse_date(d4, format = "%B %d (%Y)")
+mdy(d4)
+d5 <- "12/30/14" # Dec 30, 2014
+parse_date(d5, "%m/%d/%y")
+mdy(d5)
+t1 <- "1705"
+parse_time(t1, "%H%M")
+hm(as.double(t1) / 100)
+t2 <- "11:15:10.12 PM"
+parse_time(t2, format = "%H:%M:%OS %p")
+hms(t2) + hms("12:00:00")
+```
+
+
+
+### Textbook 16.3.1 problem 1
+
+Explore the distribution of `rincome` (reported income). What makes the default bar chart hard to understand? How could you improve the plot?
+
+```{r 10}
+gss_cat %>%
+  ggplot(aes(x = rincome)) +
+  geom_bar()
+#x축이 너무 타이트해서 보기힘듬.
+
+gss_cat %>%
+  ggplot(aes(y = rincome)) +
+  geom_bar()
+#이러면 수준들이 잘 보인다.
+```

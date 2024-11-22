@@ -146,6 +146,8 @@ table4a
 ```{r}
 table4a %>%
   gather(`1999`, `2000`, key = "year", value = "cases")
+
+table4a %>% pivot_longer(cols = c("1999", "2000"), names_to = "year", values_to = "cases")
 ```
 
 
@@ -156,12 +158,13 @@ table2 # long
 
 ```{r}
 table2 %>% spread(key = year, value = count) # wide
+table2 %>% pivot_wider(names_from = year, values_from = count)
 ```
 
 
 ## long format is preferred in ggplot
 ```{r}
-ggplot(table2, aes(x = country, y = count, color = factor(year))) + geom_bar(stat = "identity") + facet_wrap(~ type, scales = "free")
+ggplot(table2, aes(x = country, y = count, fill = factor(year))) + geom_bar(stat = "identity") + facet_wrap(~ type, scales = "free")
 
 ```
 
@@ -175,6 +178,20 @@ who %>%
   separate(col = key, into = c("new", "var", "sexage"), sep = "_") %>% 
   select(-new, -iso2, -iso3) %>% 
   separate(col = sexage, into = c("sex", "age"), sep = 1)
+
+
+who %>%
+  pivot_longer(
+    cols = new_sp_m014:newrel_f65,
+    names_to = "key",
+    values_drop_na = TRUE
+  ) %>%
+  mutate(key = str_replace_all(key, "newrel", "new_rel")) %>%
+  separate(col = key, into = c("new", "var", "sexage"), sep = "_") %>%
+  separate(col = sexage, into = c("sex", "age"), sep = 1)
+
+
+
 ```
 
 

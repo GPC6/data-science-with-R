@@ -1,0 +1,269 @@
+---
+title: "quiz 3"
+author: "박찬영"
+date: "2024-11-20"
+output:
+  rmarkdown::html_document:
+    theme: lumen
+---
+
+<style>
+  .answer{
+    background-color: #f8f9fa;
+    color: #343a40;
+    font-family: 'Arial', sans-serif;
+    font-size: 16px;
+    line-height: 1.5;
+    padding: 10px 15px;
+    border-left: 4px solid #007bff;
+    border-radius: 5px;
+    margin: 15px auto;
+    max-width: 800px;
+    word-break: break-word;
+  }
+  </style>
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+  eval = TRUE,
+  warning = FALSE,
+  fig.width = 6,
+  fig.height = 4,
+  out.width = "70%",
+  fig.align = "center"
+)
+```
+
+load required packages
+
+```{r library, message = FALSE}
+library(mosaicData)
+library(tidyverse)
+library(stringr)
+library(lubridate)
+library(forcats)
+```
+
+```{r data_load}
+wd <- paste0(getwd(), "\\R\\2024\\quiz 3\\")
+bike_day <- read_csv(paste0(wd, "bike_day.csv"))
+bike_hour <- read_csv(paste0(wd, "bike_hour.csv"))
+books <- read_csv(paste0(wd, "books.csv"))
+```
+
+## Problem 1. [16점]
+
+`mosaicData` 패키지의 `Gestation` 데이터에는 아이의 출산 기간과 부모에 대한 정보가 포함되어 있으며, 아이의 부모에 대한 정보도 기록되어 있다.
+
+문제에서 사용할 변수에 대한 설명은 다음과 같다.
+
+* `ed`, `ded`: `<chr>` 각각 아이의 엄마, 아빠의 학력
+
+* `inc`: `<chr>` 가족 연단위 수입. $2500 단위로 구분 (`"0-2500"`, `"2500-5000"`, …, `"17500-20000"`, `"20000-22500"`, `"15000+"`)
+
+* `gestation`: `<dbl>` 임신 기간 (일수 기준)
+
+* `smoke`: `<chr>` 산모의 흡연 여부
+
+* `number`: `<chr>` 산모의 하루 흡연량
+
+* `age`: `<dbl>` 출산 당시 산모의 나이
+
+
+### (a) `mosaicData::Gestation`의 `ed`, `ded` 변수를 factor 형식으로 바꾸고, level을 다음과 같이 통합하시오.
+### 변경한 데이터셋을 `Ges`라는 이름으로 저장하시오. (3점)
+
+* `"College graduate"` ← `"College graduate"`을 그대로 이용
+
+* `"Highschool graduate"` ← `"HS graduate--no other schooling"`, `"HS+some college"`, `"HS+trade"`을 통합
+
+* `"Others"` ← `"8th -12th grade - did not graduate"`, `"Trade school HS unclear"`, `"less than 8th grade"`을 통합
+
+```{r 1.a}
+ned <- fct_collapse(
+  parse_factor(Gestation$ed),
+  "College graduate" = "College graduate",
+  "Highschool graduate" = c("HS graduate--no other schooling",
+    "HS+some college",
+    "HS+trade"
+  ),
+  Others = c("8th -12th grade - did not graduate",
+    "Trade school HS unclear",
+    "less than 8th grade"
+  )
+)
+
+nded <- fct_collapse(
+  parse_factor(Gestation$ded),
+  "College graduate" = "College graduate",
+  "Highschool graduate" = c("HS graduate--no other schooling",
+    "HS+some college",
+    "HS+trade"
+  ),
+  Others = c("8th -12th grade - did not graduate",
+    "Trade school HS unclear",
+    "less than 8th grade"
+  )
+)
+
+Ges <- Gestation %>%
+  mutate(ed = ned, ded = nded)
+```
+
+### (b) `Ges` 데이터셋에 있는 `inc` 변수의 값은 다음과 같다.
+
+### `inc` 변수의 형식을 다음과 같이 변경하고, 저장하시오. (4점)
+
+* `"0-2500"`, `"2500-5000"`, …, `"20000-22500"` → `"$ 0 to 2500"`, `"$ 2500 to 5000"`, …, `"$ 20000 to 22500"`
+* `"15000+"`은 `"$ 15000 over"`이 아닌 `"$ 25000 over"`으로 변경한다.
+  
+
+```{r 1.b}
+Ges$inc <- Ges$inc %>%
+  fct_recode(
+    "$ 0 to 2500" = "0-2500",
+    "$ 2500 to 5000" = "2500-5000",
+    "$ 5000 to 7500" = "5000-7500",
+    "$ 7500 to 10000" = "7500-10000",
+    "$ 10000 to 12500" = "10000-12500",
+    "$ 12500 to 15000" = "12500-15000",
+    "$ 15000 to 17500" = "15000-17500",
+    "$ 17500 to 20000" = "17500-20000",
+    "$ 20000 to 22500" = "20000-22500",
+    "$ 25000 over" = "15000+"
+  )
+```
+
+### (c) Ges 데이터셋의 number와 gestation의 관계를 시각화하고자 한다.
+
+* 현재 산모가 흡연 중이고(`smoke == "now"`), `gestation`, `number`가 NA가 아닌 관찰값만을 이용한다.
+
+* `number` 변수를 `factor`로 변환한다. level의 순서는, 일일 흡연량을 기준으로 오름차순으로 정렬한다.
+
+### 위의 과정을 거쳐, 아래와 같은 boxplot을 출력하시오. (4점)
+
+* single pipeline으로 작성하시오.
+
+<img src="F:\\data\\quiz3_img1.png">
+
+```{r 1.c}
+Ges %>%
+  filter(!is.na(gestation), !is.na(number), smoke == "now") %>%
+  mutate(number = parse_factor(number)) %>%
+  mutate(number = fct_relevel(
+    number,
+    c("1-4 per day",
+      "5-9 per day", "10-14 per day",
+      "15-19 per day", "20-29 per day",
+      "30-39 per day", "40-60 per day"
+    )
+  )) %>%
+  ggplot(aes(x = number, y = gestation)) +
+  geom_boxplot()
+```
+
+
+### (d) `Ges` 데이터셋의 `inc`와 `age`의 관계를 보고자 한다.
+
+* `age`와 `inc`가 `NA`가 아닌 관찰값만 사용한다.
+
+* `inc` 변수를 `factor`로 변환한다. level의 순서는, level별 `age`의 평균을 기준으로 오름차순으로 정렬한다.
+
+* `age`를 x축으로 하는 히스토그램을 그리고, `inc`별로 `facet`을 나누어 비교한다. `bin`의 개수는 자유롭게 정한다.
+
+### 위의 과정을 거쳐, 아래와 같은 histogram을 출력하고 `inc`와 `age`의 관계에 대한 해석을 서술하시오. (5점)
+
+* single pipeline으로 작성하시오.
+
+<img src="F:\\data\\quiz3_img2.png">
+
+```{r 1.d}
+Ges %>%
+  filter(!is.na(inc), !is.na(age)) %>%
+  group_by(inc) %>%
+  mutate(avage = mean(age)) %>%
+  ungroup() %>%
+  mutate(inc = fct_reorder(inc, avage)) %>%
+  ggplot(aes(age)) +
+  geom_histogram(bins = 30) +
+  facet_wrap(~inc, nrow = 3)
+```
+
+<p class="answer">
+  $20000 이하의 소득에서는 모두 20대의 수가 많은 것을 볼 수 있다.
+  그러나 $20000 이상의 소득에는 20대가 많이 없는 것을 확인 할 수 있다.
+</p>
+
+## Problem 2. [18점]
+
+`bike_day.csv`, `bike_hour.csv`는 날짜/시간별 자전거 대여시스템 이용에 관한 데이터이다.
+
+변수에 대한 설명은 다음과 같다.
+
+* `bike_day$dteday`: `<date>` `2011-01-01` ~ `2012-12-31` 까지의 날짜
+* `bike_hour$date`: `<chr>` `"3/1 (2011)"` ~ `"9/30 (2011)"` 까지의 날짜
+* `bike_hour$hour`: `<chr>` `"12 AM"`, `"1 AM"`, …, `"11 PM"` 형태의 시간
+* `bike_hour$total`: `<dbl>` 해당 `date`, `hour`의 총 자전거 대여 횟수.
+
+
+### (a) `bike_day.csv`, `bike_hour.csv`을 각각 `bike_day`, `bike_hour`라는 이름의 tibble로 저장하시오. (3점)
+
+```{r 2.a}
+bike_day <- read_csv(paste0(wd, "bike_day.csv"))
+bike_hour <- read_csv(paste0(wd, "bike_hour.csv"))
+```
+
+
+### (b) `bike_hour` 데이터셋의 `date`의 형식을 character에서 date으로 변경하고, 저장하시오.
+
+### 저장 후 상위 10개 행을 출력하시오. (3점)
+
+```{r 2.b}
+bike_hour$date <- bike_hour$date %>%
+  parse_date(format = "%m/%d (%Y)")
+
+bike_hour %>% head(10)
+```
+
+### (c) 다음 조건에 따라 두 데이터셋을 결합하는 코드를 작성하시오 (3점):
+
+* `bike_hour`와 `bike_day`을 join한다.
+
+* `bike_day`의 `dteday`를 primary key로 하고, `bike_hour`의 `date`를 foreign key로 한다.
+
+* 결합된 데이터셋을 `bike`라는 이름으로 저장하고, 상위 10개의 행을 출력하시오.
+
+```{r 2.c}
+bike <- semi_join(bike_hour, bike_day, by = c("date" = "dteday"))
+head(bike, 10)
+```
+
+
+### (d) bike 데이터셋의 date, hour 변수를 합쳐, 새로운 변수 datetime을 만드시오. datetime은 datetime 형식이어야 한다. 저장 후 상위 10개의 행을 출력하시오. (4점)
+
+```{r 2.d}
+bike <- bike %>% mutate(datetime = paste(as.character(date), hour)) %>%
+  mutate(datetime = ymd_h(datetime))
+
+head(bike, 10)
+```
+
+### (e) bike 데이터셋을 이용해 요일별, 하루 시간대별 평균 이용량을 그림과 같이 시각화하시오.
+
+### 시각화 후, 요일과 이용량의 관계를 간략히 서술하시오. (5점)
+
+* single pipeline으로 작성하시오.
+
+<img src="F:\\data\\quiz3_img2.png">
+
+```{r 2.e}
+bike %>%
+  mutate(wday = weekdays(date)) %>%
+  group_by(hour, wday) %>%
+  summarise("average usage" = mean(total, na.rm = TRUE)) %>%
+  ungroup() %>%
+  ggplot(aes(hour, "average usage")) +
+  geom_point()
+
+```
