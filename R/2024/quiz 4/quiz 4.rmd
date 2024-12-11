@@ -1,0 +1,247 @@
+---
+title: "quiz 4"
+author: "박찬영"
+date: "2024-12-11"
+output:
+  rmarkdown::html_document:
+    theme: lumen
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+  eval = TRUE,
+  warning = FALSE,
+  fig.width = 6,
+  fig.height = 4,
+  out.width = "70%",
+  fig.align = "center"
+)
+```
+
+<style>
+  .answer{
+    background-color: #f8f9fa;
+    color: #343a40;
+    font-family: 'Arial', sans-serif;
+    font-size: 16px;
+    line-height: 1.5;
+    padding: 10px 15px;
+    border-left: 4px solid #007bff;
+    border-radius: 5px;
+    margin: 15px auto;
+    max-width: 800px;
+    word-break: break-word;
+  }
+  </style>
+
+
+```{r library}
+library(tidyverse)
+library(modelr)
+library(splines)
+```
+
+```{r data}
+wd <- getwd()
+stairs <- read_csv(paste0(wd, "\\R\\2024\\quiz 4\\stairs.csv"))
+scores <- read_csv(paste0(wd, "\\R\\2024\\quiz 4\\scores.csv"))
+```
+
+
+### Q1
+
+#### a
+```{r 1.a}
+x <- 1:10
+out1 <- c()
+s <- 0
+for (i in x) {
+  s <- s + i
+  out1 <- c(out1, s)
+}
+out1
+```
+
+#### b
+```{r 1.b}
+out2 <- sapply(1:10, function(y) {
+  sum(x[1:y])
+})
+out2
+```
+
+#### c
+
+```{r 1.c}
+map_dbl(1:10, ~sum(x[1:.]))
+```
+
+#### d
+
+```{r 1.d}
+library(purrr)
+my_cumsum <- function(x) {
+  if (!is.numeric(x)) {
+    stop("The input must be numeric.")
+  }
+  out <- map_dbl(
+    seq_len(length(x)),
+    ~sum(x[1:.], na.rm = TRUE)
+  )
+  if (sum(is.na(x)) != 0) {
+    warning("NA exists in the input.")
+    out[is.na(x)] <- NA
+  }
+  return(out)
+}
+```
+
+
+```{r test1, error = TRUE}
+run_test1 <- function() {
+  x1 <- c(3, 5, 2)
+  x2 <- 5
+  x3 <- c("hi", "hello")
+  x4 <- c(3, 5, NA, 2)
+
+  lapply(list(x1, x2, x3, x4), function(x) {
+    tryCatch({
+      my_cumsum(x)
+    }, error = function(e) {
+      paste("Error:", e$message)
+    })
+  })
+}
+run_test1()
+```
+
+
+### Q2
+
+#### a
+
+```{r 2.a}
+get_next_loc <- function(curr_loc, res) {
+  x <- res
+  next_loc <- min(max(curr_loc + x^2 + 2 * x, 0), 25)
+  return(next_loc)
+}
+```
+
+
+```{r test2}
+run_test2 <- function() {
+  test_set <- rbind(
+    c(0, -1),
+    c(5, 0),
+    c(5, 1),
+    c(5, -1),
+    c(24, 1)
+  )
+  print(apply(test_set, 1, function(x) get_next_loc(x[1], x[2])))
+}
+run_test2()
+```
+
+
+#### b
+```{r 2.b}
+stairs <- stairs %>%
+  mutate(junho_won = ifelse(
+    junho == hojun, 0, ifelse(
+      paste0(junho, hojun) %in% c("pr", "sp", "rs"), 1, -1
+    )
+  ))
+head(stairs, 5)
+```
+
+#### c
+
+```{r 2.c}
+junho_l <- 0
+hojun_l <- 0
+i <- 1
+while ((max(junho_l) < 25 && max(hojun_l) < 25 && i <= 30)) {
+  res <- stairs$junho_won[i]
+  junho_l <- c(junho_l, get_next_loc(junho_l[i], res))
+  hojun_l <- c(hojun_l, get_next_loc(hojun_l[i], -res))
+  i <- i + 1
+}
+
+head(junho_l, 5)
+head(hojun_l, 5)
+```
+
+<p class="answer">
+  30번의 가위바위보에 종료되었다.
+</p>
+
+```{r 2.cc}
+junho_l[30]
+hojun_l[30]
+```
+
+#### d
+
+```{r 2.d}
+df <- tibble(
+  i = seq_len(length(hojun_l)),
+  hojun = hojun_l,
+  junho = junho_l
+) %>% pivot_longer(c("hojun", "junho"), values_to = "loc")
+
+ggplot(df, aes(i, loc, color = name)) +
+  geom_step(linewidth = 1)
+```
+
+### Q3
+
+#### a
+
+```{r 3.a}
+mod1 <- lm(score ~ poly(hours, 2), data = scores)
+mod2 <- lm(score ~ poly(hours, 3), data = scores)
+mod3 <- lm(score ~ ns(hours, df = 3), data = scores)
+
+grid <- tibble(hours = seq(2, 40, 0.1))
+
+grid <- grid %>%
+  gather_predictions(mod1, mod2, mod3)
+
+grid %>%
+  ggplot(aes(hours)) +
+  geom_line(aes(y = pred, color = model), size = 1) +
+  geom_point(data = scores, aes(y = score), color = "darkgrey") +
+  ylab("score") +
+  facet_wrap(~model) +
+  theme(legend.position = "none")
+```
+
+
+#### b
+```{r 3.b}
+df2 <- tibble(hours = c(5, 10, 15, 20, 25, 30, 35))
+
+df2 <- df2 %>% gather_predictions(mod1, mod2, mod3)
+df2 <- df2 %>% pivot_wider(
+  names_from = "hours", values_from = "pred", names_prefix = "h"
+)
+
+df2
+```
+<p class="answer">
+  공부시간이 늘수록 점수도 오르는 경향을 보인다.
+</p>
+
+#### c
+
+```{r 3.c}
+library(boot)
+
+boot_se <- function(data, index) {
+  mod <- lm(score ~ ns(hours, df = 3), data = data[index, ])
+  return(predict(mod, newdata = tibble(hours = c(5, 10, 15, 20, 25, 30, 35))))
+}
+boot(scores, boot_se, R = 100)
+```

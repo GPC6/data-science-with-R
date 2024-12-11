@@ -1,0 +1,311 @@
+---
+title: "HW4"
+author: "박찬영"
+date: "2024-11-30"
+output:
+  rmarkdown::html_document:
+    theme: lumen
+---
+
+<style>
+  .answer{
+    background-color: #f8f9fa;
+    color: #343a40;
+    font-family: 'Arial', sans-serif;
+    font-size: 16px;
+    line-height: 1.5;
+    padding: 10px 15px;
+    border-left: 4px solid #007bff;
+    border-radius: 5px;
+    margin: 15px auto;
+    max-width: 800px;
+    word-break: break-word;
+  }
+  </style>
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+  eval = TRUE,
+  warning = FALSE,
+  fig.width = 6,
+  fig.height = 4,
+  out.width = "70%",
+  fig.align = "center"
+)
+```
+
+```{r library, message = FALSE}
+library(tidyverse)
+```
+
+### Textbook(1st) 19.2.1 problem 4
+
+write your own functions to compute the variance and skewness of a numeric vector. <br>
+Variance is defined as
+$$
+\text{Var}(x) = \frac{1}{n-1} \sum_{i=1}^n (x_i - \bar{x})^2
+$$
+where $\bar{x} = {\sum_{i=1}^n x_i}/n$ is the sample mean. <br>
+Skewness is defined as
+$$
+\text{Skew}(x) = \frac{\frac{1}{n-2} \left( \sum_{i=1}^n (x_i - \bar{x})^3 \right)}{\text{Var}(x)^{3/2}}.
+$$
+
+```{r 1}
+my_var <- function(x) {
+  if (!is.numeric(x)) {
+    stop("input numeric vector")
+  }
+  y <- na.omit(x)
+  bary <- mean(y)
+  vary <- sum((y - bary)^2) / (length(y) - 1)
+  return(vary)
+}
+
+x <- rnorm(100)
+var(x)
+my_var(x)
+
+my_skew <- function(x) {
+  if (!is.numeric(x)) {
+    stop("input numeric vector")
+  }
+  y <- na.omit(x)
+  bary <- mean(y)
+  u <- sum((y - bary)^3) / (length(y) - 2)
+  vary <- sum((y - bary)^2) / (length(y) - 1)
+  skew <- u / vary^(3 / 2)
+  return(skew)
+}
+e1071::skewness(x)
+my_skew(x)
+```
+
+### Textbook(1st) 19.2.1 problem 5
+
+Write `both_na()`, a function that takes two vectors of the same length and returns the number of positions that have an `NA` in both vectors.
+
+```{r 2}
+both_na <- function(x, y) {
+  if (length(x) != length(y)) {
+    stop("길이가 같은 벡터를 입력하세요.")
+  }
+  na_x <- is.na(x)
+  na_y <- is.na(y)
+  logic <- na_x * na_y
+  pos <- c()
+  for (i in seq_len(length(x))){
+    if (logic[i] == 1) {
+      pos <- c(pos, i)
+    }
+  }
+  return(pos)
+}
+both_na(c(1, NA, 2, 3, NA, 8, NA), c(NA, NA, 3, 4, NA, 8, 10))
+```
+
+### Textbook(1st) 19.4.4 problem 4
+
+How could you use `cut()` to simplify this set of nested if-else statements?
+
+```{r test, eval = FALSE}
+if (temp <= 0) {
+  "freezing"
+} else if (temp <= 10) {
+  "cold"
+} else if (temp <= 20) {
+  "cool"
+} else if (temp <= 30) {
+  "warm"
+} else {
+  "hot"
+}
+```
+How would you change the call to `cut()` if I’d used `<` instead of `<=`? What is the other chief advantage of `cut()` for this problem? *(Hint: what happens if you have many values in `temp`?)*
+
+```{r 3}
+how_temp <- function(temp) {
+  cut(
+    temp,
+    breaks = c(-Inf, 0, 10, 20, 30, Inf),
+    labels = c("freezing", "cold", "cool", "warm", "hot"),
+    right = TRUE
+  )
+}
+
+how_temp(11)
+how_temp(30)
+how_temp(c(-2, -5, 4, 12, 45))
+```
+<p class="answer">
+  <=가아니라 < 이면 cut 함수의 right 인수를 FALSE로 바꾸면 경계값의 오른쪽을 포함하지 않아서 같은 의미가 된다.<br>
+  단순히 주어진 if_else chunk는 단일 벡터를 받아 단일 벡터를 출력하지만 cut으로 범주형 변수를 이용해 구현하면 벡터의 요소가 여러개여도 각각의 요소에 대해서 대응되는 문자열을 출력할 수 있다.
+</p>
+
+
+### Textbook(1st) 21.2.1 problem 2
+
+Eliminate the for loop in each of the following examples by taking advantage of an existing function that works with vectors:
+
+```{r pr, eval = FALSE}
+out <- ""
+for (x in letters) {
+  out <- stringr::str_c(out, x)
+}
+
+x <- sample(100)
+sd <- 0
+for (i in seq_along(x)) {
+  sd <- sd + (x[i] - mean(x)) ^ 2
+}
+sd <- sqrt(sd / (length(x) - 1))
+
+x <- runif(100)
+out <- vector("numeric", length(x))
+out[1] <- x[1]
+for (i in 2:length(x)) {
+  out[i] <- out[i - 1] + x[i]
+}
+```
+
+```{r 4}
+#1
+str_c(letters, collapse = "")
+str_flatten(letters)
+
+#2
+x <- sample(100)
+sd <- sqrt(sum((x - mean(x))^2) / (length(x) - 1))
+sd
+
+#3
+x <- runif(100)
+cumsum(x)
+```
+
+### Textbook(1st) 21.4.1 problem 1
+
+Read the documentation for `apply()`. In the 2d case, what two for loops does it generalise?
+
+<p class="answer">
+  행별로 돌리는 for루프와 열별로 돌리는 for루프가 일반화 된다.
+</p>
+
+### Textbook(1st) 21.5.3 problem 2
+
+How can you create a single vector that for each column in a data frame indicates whether or not it’s a factor?
+
+```{r 5}
+map_lgl(mtcars, is.factor)
+map_lgl(diamonds, is.factor)
+```
+
+### Textbook(1st) 23.2.1 problem 2
+
+One way to make linear models more robust is to use a different distance measure.<br>
+For example, instead of root-mean-squared distance, you could use mean-absolute distance:
+
+```{r given_function}
+measure_distance <- function(mod, data) {
+  diff <- data$y - (mod[1] + data$x * mod[2])
+  mean(abs(diff))
+}
+```
+
+Use optim() to fit this model to the simulated data above and compare it to the linear model.
+
+```{r 6}
+library(modelr)
+
+measure_distance <- function(mod, data) {
+  diff <- data$y - (mod[1] + data$x * mod[2])
+  mean(abs(diff))
+}
+
+best <- optim(c(0, 0), measure_distance, data = sim1)
+best$par
+
+
+ggplot(sim1, aes(x, y)) +
+  geom_point(size = 2, colour = "grey30") +
+  geom_abline(intercept = best$par[1], slope = best$par[2])
+```
+
+<p class="answer">
+  measure_distance를 root-mean-squared distance로 했을 때의 회귀계수 4.222248 2.051204와 다르게
+  4.364852 2.048918이 나왔다.
+  그래프를 보면 아웃라이어에 더 둔감하게 반응한다.
+</p>
+
+### Textbook(1st) 23.3.3 problem 1
+
+Instead of using `lm()` to fit a straight line, you can use `loess()` to fit a smooth curve. Repeat the process of model fitting, grid generation, predictions, and visualisation on `sim1` using `loess()` instead of `lm()`. How does the result compare to `geom_smooth()`?
+
+```{r 7}
+grid <- sim1 %>%
+  data_grid(x)
+
+lmod <- loess(y ~ x, data = sim1)
+pred <- grid %>%
+  add_predictions(lmod)
+
+ggplot(sim1, aes(x = x, y = y)) +
+  geom_point(aes(y = y)) +
+  geom_line(aes(y = pred), data = pred, colour = "red", size = 1) +
+  geom_smooth(color = "blue", se = FALSE)
+```
+
+<p class="answer">
+  빨간 선(직접 모델링)과 파란 선(geom_smooth)는 거의 겹치는 것을 알 수 있다.
+</p>
+
+### Textbook(1st) 23.4.5 problem 3
+Using the basic principles, convert the formulas in the following two models into functions. *(Hint: start by converting the categorical variable into 0-1 variables.)*
+
+```{r model, eval = FALSE}
+mod1 <- lm(y ~ x1 + x2, data = sim3)
+mod2 <- lm(y ~ x1 * x2, data = sim3)
+```
+
+```{r 8}
+# mod1
+x <- model.matrix(y ~ x1 + x2, sim3)
+y = sim3$y
+beta1 <- solve(t(x) %*% x) %*% t(x) %*% y
+beta1
+
+# mod2
+x2 <- model.matrix(y ~ x1 * x2, sim3)
+beta2 <- solve(t(x2) %*% x2) %*% t(x2) %*% y
+beta2
+```
+
+### Textbook(2nd) 26.2.8 problem 1
+
+Practice your `across()` skills by:
+
+1. Computing the number of unique values in each column of `palmerpenguins::penguins`.
+
+```{r 9.1}
+palmerpenguins::penguins %>%
+  summarise(across(everything(), ~length(unique(.))))
+```
+
+2. Computing the mean of every column in `mtcars`.
+
+```{r 9.2}
+mtcars %>%
+  summarise(across(everything(), mean))
+```
+
+3. Grouping `diamonds` by `cut`, `clarity`, and `color` then counting the number of observations and computing the mean of each numeric column.
+
+```{r 9.3}
+diamonds %>%
+  group_by(cut, clarity, color) %>%
+  summarise(
+    n = n(),
+    across(where(is.numeric), mean)
+  )
+```

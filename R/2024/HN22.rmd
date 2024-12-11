@@ -1,0 +1,253 @@
+---
+title: "HN22"
+author: "박찬영"
+date: "2024-11-30"
+output:
+  rmarkdown::html_document:
+    theme: lumen
+---
+
+<style>
+  .answer{
+    background-color: #f8f9fa;
+    color: #343a40;
+    font-family: 'Arial', sans-serif;
+    font-size: 16px;
+    line-height: 1.5;
+    padding: 10px 15px;
+    border-left: 4px solid #007bff;
+    border-radius: 5px;
+    margin: 15px auto;
+    max-width: 800px;
+    word-break: break-word;
+  }
+  </style>
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+  eval = TRUE,
+  warning = FALSE,
+  fig.width = 6,
+  fig.height = 4,
+  out.width = "70%",
+  fig.align = "center"
+)
+```
+
+```{r load, message=FALSE}
+library(haven)
+library(tidyverse)
+library(car)
+
+data <- read_sav("F:\\data\\HN22_실습.sav")
+```
+
+데이터를 불러옵니다.
+
+```{r data_preprocessing}
+pdata <- data %>%
+  mutate(
+    sex = factor(sex, labels = c("남자", "여자")),
+    cursmoke = factor(cursmoke, labels = c("비흡연", "현재흡연")),
+    BMI_group = cut(
+      HE_BMI,
+      breaks = c(-Inf, 20, 25, Inf),
+      labels = c("저체중", "정상", "비만")
+    ),
+    BMI_group = fct_relevel(BMI_group, c("정상", "저체중", "비만"))
+  )
+glimpse(pdata)
+```
+
+불러온 데이터를 전처리합니다.<br>
+성별은 남자 여자의 범주형 변수, 흡연여부는 비흡연 과거흡연 현재흡연의 범주형 변수로 변환하였습니다.<br>
+BMI_group은 기준에 맞게 정상 저체중 비만의 수준을 갖는 범주형 변수로 생성하였습니다.
+
+
+```{r 1.1}
+mod1 <- lm(HE_sbp ~ age + sex + HE_chol + HE_TG + BMI_group + cursmoke, data = pdata)
+summary(mod1)
+```
+
+<p class="answer">
+  모형의 결정계수는 0.255이다.
+  이는 모델이 데이터의 25.5%를 설명한다고 할 수 있다.
+</p>
+<br>
+<p class="answer">
+  age 변수의 기울기는 0.337이고 유의확률이 0.05보다 낮아 유의하다.<br>
+  이는 age 변수가 1 오를때 최종수축기혈압이 평균적으로 0.337 오른다는 의미이다. <br>
+  sex 변수의 기울기는 -3.240이고 유의확률이 0.05보다 낮아 유의하다.<br>
+  이는 sex 변수가 여자일 때 남자일때 보다 최종수축기혈압이 평균적으로 3.240 감소한다는 의미이다. <br>
+  HE_chol 변수의 기울기는 -0.001이고 유의확률은 0.9로 유의하지 않다.<br>
+  이는 HE_chol 변수가 1 오를때 최종수축기혈압이 평균적으로 0.001 감소한다는 의미이다. <br>
+  HE_TG 변수의 기울기는 0.0148이고 유의확률이 0.05보다 낮아 유의하다.<br>
+  이는 HE_TG 변수가 1 오를때 최종수축기혈압이 평균적으로 0.0148 오른다는 의미이다. <br>
+  BMI_group 변수는 저체중일 때 정상일 때보다 최종수축기혈압이 평균적으로 5.570 감소하고,<br>
+  비만일 때는 정상일 때보다 최종수축기혈압이 평균적으로 5.938 증가한다. <br>
+  각각의 더미 변수의 유의확률이 모두 0.05보다 낮아 유의하다. <br>
+  cursmoke 변수의 기울기는 1.243이고 유의확률은 0.487로 유의하지 않다.<br>
+  이는 cursmoke 변수가 현재흡연일 때 비흡연일 때보다 최종수축기혈압이 평균적으로 1.243 오른다는 의미이다. <br>
+</p>
+<br>
+<p class="answer">
+  age 변수의 기울기 계수 추정값은 0.337이다.
+  age가 10만큼 오르면 최종수축기혈압은 평균적으로 10 * 0.337 = 3.37만큼 오른다.
+</p>
+
+
+```{r 1.4}
+vif(mod1)
+```
+
+<p class="answer">
+  다중공선성을 확인하는 GVIF 테이블이다.
+  모든 변수에 대해서 값이 1.0정도로 작으므로 다중공선성이 없다고 판단 할 수 있다.
+</p>
+
+
+```{r 1.5}
+plot(mod1, which = 1)
+plot(mod1, which = 2)
+plot(mod1, which = 3)
+```
+
+<p class="answer">
+  첫 번째 그래프는 residual plot으로 선형성을 확인한다.
+  잔차가 특별한 패턴을 띄지 않으므로 선형성을 만족한다고 볼 수 있다.
+</p>
+<p class="answer">
+  두 번째 그래프는 normal qq plot이다. 이는 정규성을 확인한다.
+  점들이 모두 대각선위에 있으므로 정규성을 만족한다고 볼 수 있다.
+</p>
+<p class="answer">
+  세 번째 그래프는 scale location plot이다. 이는 등분산성을 확인한다.
+  특별한 패턴을 띄지 않으므로 등분산성을 만족한다고 볼 수 있다.
+</p>
+
+
+
+```{r 2}
+table <- pdata %>% select(BMI_group, mh_stress) %>% table()
+table
+```
+
+### 2.1 <br><br>
+H0: BMI_group 은 스트레스 인지 분율과 독립적이다. <br>
+H1: H0 is not true<br><br>
+
+
+분할표에대한 두 범주형 변수의 독립성 검정이므로 피어슨 카이제곱 검정을 시행한다.
+
+
+```{r 2.1}
+chisq.test(table)
+```
+<p class="answer">
+  카이제곱 검정에 의하면 유의확률 0.038로 유의수준 0.05에서 귀무가설을 기각할 충분한 데이터이다.<br>
+  즉 두 변수 BMI_group과 mh_stress가 독립적이라는 가설을 기각할 수 있다.
+</p>
+
+BMI_group과 mh_stress 사이에 성별이라는 교란변수를 넣어서 Mantel-haenszel 검정을 실시한다.
+```{r 2.2}
+table2 <- pdata %>% select(BMI_group, mh_stress, sex) %>% table()
+table2
+```
+
+### 2.2 <br><br>
+H0: BMI_group과 스트레스 인지 분율은 성별에 관계없이 독립적이다.<br>
+
+H1: H0 is not true<br><br>
+
+성별을 기준으로 층화되었으므로, 성별에 따른 영향을 알아보기 위해 mantel_haenszel 검정을 실시한다.
+
+```{r 2.3}
+mantelhaen.test(table2)
+```
+
+검정결과 유의확률은 0.099로 유의수준 0.05보다 커서 귀무가설을 기각 할 수 없다.
+즉 BMI_group과 스트레스 인지 분율의 관계는 성별에 관계없이 독립적이다는 가설을 기각 할 수 없다.
+
+### 2.3
+
+<p class="answer">
+  2.1에서의 방법은 교란변수인 성별을 고려하지 않은 방법이다. 성별을 고려하지 않으면 두 변수는 어떤 관계가 있다고 볼 수 있다.<br>
+  하지만 2.2에서 데이터를 성별에따라 층화시킨 후 검정을 실시하면 성별이 미치는 영향을 없앨 수 있다.<br>
+  성별이 두 변수의 관계에 미치는 영향을 배제하였을 때 두 변수는 독립적이라고 볼 수 있는데, 이는 성별이 두 변수사이에 교란변수로 작용했음을 알 수 있다.
+</p>
+
+<p class="answer">
+  단순한 카이제곱 검정에서는 교란변수를 고려하지 못하지만, mantel_haenszel 검정에서는 교란변수의 효과를 확인 할 수 있다.
+</p>
+
+```{r 3}
+library(ResourceSelection)
+
+new_data <- pdata %>% mutate(SBP_group = HE_sbp > 120) %>%
+  select(SBP_group, age, sex, HE_chol, HE_TG, BMI_group, cursmoke) %>% na.omit()
+
+logistic_mod <- glm(SBP_group ~ ., family = binomial, data = new_data)
+summary(logistic_mod)
+
+hoslem.test(new_data$SBP_group, fitted(logistic_mod), g = 10)
+```
+
+### 3.1
+
+<p class="answer">
+H0: 모델이 데이터에 잘 맞는다. <br>
+H1: 모델이 데이터에 잘 맞지 않는다. <br><br>
+가설 검정을 진행한다.<br>
+로지스틱 회귀모델이므로 Hosmer-Lemeshow 검정을 진행하였다.<br>
+그 결과 p-value는 0.450으로 귀무가설을 기각할 만 한 충분한 증거를 제공하지 못한다.<br>
+즉 모델이 데이터에 잘 맞는다는 가설을 기각 할 수 없다.
+</p>
+
+
+### 3.2
+<p class="answer">
+  age 변수의 기울기는 0.045이고 유의확률이 0.05보다 낮아 유의하다.<br>
+  이는 age 변수가 1 오를때 SBP_group의 로그 오즈값이 이 평균적으로 0.045 오른다는 의미이다. <br>
+  sex 변수의 기울기는 -0.414이고 유의확률이 0.0559로 유의하지 않다.<br>
+  이는 sex 변수가 여자일 때 남자일때 보다 SBP_group의 로그 오즈값이 평균적으로 0.414 감소한다는 의미이다. <br>
+  HE_chol 변수의 기울기는 0.0005이고 유의확률은 0.807로 유의하지 않다.<br>
+  이는 HE_chol 변수가 1 오를때 SBP_group의 로그 오즈값이 평균적으로 0.0005 증가한다는 의미이다. <br>
+  HE_TG 변수의 기울기는 0.003이고 유의확률이 0.05보다 낮아 유의하다.<br>
+  이는 HE_TG 변수가 1 오를때 SBP_group의 로그 오즈값이 평균적으로 0.003 오른다는 의미이다. <br>
+  BMI_group 변수는 저체중일 때 정상일 때보다 SBP_group의 로그 오즈값이 평균적으로 0.683 감소하고,<br>
+  비만일 때는 정상일 때보다 SBP_group의 로그 오즈값이 평균적으로 0.600 증가한다. <br>
+  저체중일 때의 회귀계수 기울기의 유의확률은 0.164로 유의하지않고,<br>
+  비만일때의 회귀계수 기울기의 유의확률은 0.05보다 낮아 유의하다. <br>
+  cursmoke 변수의 기울기는 0.054이고 유의확률은 0.850로 유의하지 않다.<br>
+  이는 cursmoke 변수가 현재흡연일 때 비흡연일 때보다 SBP_group의 로그 오즈값이 평균적으로 0.054 오른다는 의미이다. <br>
+</p>
+
+### 3.3
+```{r 3.3}
+library(caret)
+pred_prob <- predict(logistic_mod, type = "response") >= 0.4
+real_prob <- new_data$SBP_group
+table(pred_prob, real_prob)
+```
+
+<p class="answer">
+  TRUE는 위험군, FALSE는 정상군이다.<br>
+  민감도는 156 / (47 + 156) = 0.768이다.<br>
+  특이도는 160 / (160 + 106) = 0.601이다.
+</p>
+
+### 3.4
+```{r 3.4}
+library(yardstick)
+ddata <- data.frame(truth = factor(real_prob, levels = c("TRUE", "FALSE")), prob = predict(logistic_mod, type = "response"))
+roc <- roc_curve(ddata, truth, prob)
+
+autoplot(roc)
+roc_auc(ddata, truth, prob)
+```
+
+<p class="answer">
+  AUC값은 0.747이다.<br>
+  양성과 음성 샘플을 무작위로 선택했을 때, 양성 샘플이 더 높은 예측값을 가질 확률이 0.747이라는 의미이다.
+</p>
